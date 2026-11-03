@@ -4,6 +4,7 @@
 # (Wajo: proxies carry no timecode and the camera scratch audio correlates poorly with the recorder).
 import json, os, re, sys, glob, statistics as st
 OUT, RDIR, ODIR, PATHS = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+MIN_EXTRA = 6   # 4-word matches needed to keep a second (third...) camera clip for the same recorder file
 SRC = {os.path.basename(p): p for p in json.load(open(PATHS))}
 def load(d):
     out = {}
@@ -22,7 +23,9 @@ O = {k: v for k, v in load(ODIR).items() if OF.search(k)}
 with open(OUT, "w") as fh:
     for o, og in O.items():
         if o in R: continue
-        best = None
+        found = []   # EVERY camera clip that matches this recorder file: a camera that stopped and restarted
+        # during one recorder take has two clips for it (Notch: A cam 9126/9129/9132/9135 and lines 13-15 lost A cam
+        # when only the single best clip was kept)
         for r, rg in R.items():
             if r == o: continue
             offs = [rt - ot for g in og.keys() & rg.keys() for ot in og[g] for rt in rg[g]]
@@ -32,8 +35,10 @@ with open(OUT, "w") as fh:
             for i in range(len(offs)):
                 while offs[i] - offs[j] > 0.15: j += 1
                 if i - j + 1 > len(top): top = offs[j:i+1]
-            if best is None or len(top) > best[1]: best = (r, len(top), st.median(top))
-        if best:
-            fh.write(json.dumps(dict(ref=SRC[best[0]], other=SRC[o], offset_s=round(best[2], 3),
-                                     confidence=round(min(1.0, best[1] / 20), 3), matches=best[1])) + "\n")
+            found.append((r, len(top), st.median(top)))
+        found.sort(key=lambda x: -x[1])
+        for k, (r, n, off) in enumerate(found):
+            if k == 0 or n >= MIN_EXTRA:   # verify_sync.py confirms each one against the words
+                fh.write(json.dumps(dict(ref=SRC[r], other=SRC[o], offset_s=round(off, 3),
+                                         confidence=round(min(1.0, n / 20), 3), matches=n)) + "\n")
 print(open(OUT).read())

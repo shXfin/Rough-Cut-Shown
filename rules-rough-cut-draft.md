@@ -81,3 +81,17 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 
 - **Check the proxies first:** that every camera clip has a proxy, that each proxy has sound (Aspect drops it on some clips), and that its length matches the original. Do this before transcribing, syncing or downloading anything big.
 - **One silent clip must never stop the batch:** skip it, list it, and place it by picture later.
+
+## Camera coverage is checked, never assumed (Notch, 2026-11-04)
+- Every camera must sit on every take where it was rolling. Sync keeps EVERY camera clip that matches a recorder
+  file (textsync.py), not only the best one: cameras stop and restart inside one recorder take.
+- Each sync is confirmed word by word (verify_sync.py) before it is used.
+- After every build, the builder prints `WARNING: no B cam on N pieces: L13 ...` and each such take's marker says
+  `NO B CAM`. The editor is told in chat, with the line list and the reason (footage stops, or sync failed).
+- If a camera's footage simply ends (Notch B cam stops during MixPre-017), say so and ask whether another card exists.
+
+## Sound per speaker
+- Recorder channels are separate lavs, not a mix. Each piece uses the channel where it is loudest (best_channel).
+- A take more than 12 dB under the line's other takes has no voice (Whisper invented it): never picked.
+- A word longer than 1.5 s is a timing failure: fix_stretched.py re-listens and keeps the most complete read.
+- Check transcription runs without the script as a prompt, and any line it misses is re-checked on its own.

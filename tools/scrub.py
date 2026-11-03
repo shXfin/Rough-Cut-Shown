@@ -17,9 +17,14 @@ def norm(s):   # Whisper writes "12 .30" and "1 ,000"; scripts write "twelve thi
 
 # which setup each recorder file belongs to, from the slate ("this is hook two, take one");
 # files with no slate inherit the previous file's setup
-SLATE = [("hook2", r"hook (two|2)|up (two|2)"), ("aha", r"\baha\b"), ("closing", r"\bclosing\b"), ("cta", r"\bcta\b"),
-         ("hook1", r"this is shiva")]
-SECTION_OF_BEAT = {"HOOK1": "hook1", "HOOK": "hook2"}   # hooks share wording, so they only search their own setup
+# Generic slate words; a project can override with slates.json next to lines.json (Wajo needs "hook two" vs
+# its Hook 1 setup): {"slate": [[name, regex], ...], "section_of_beat": {beat: name}}
+SLATE = [("hook", r"\bhook\b"), ("aha", r"\baha\b|\ba ha\b"), ("features", r"\bfeature"), ("proof", r"social proof"),
+         ("closing", r"\bclos(e|ing)\b"), ("cta", r"\bcta\b|give ?away")]
+SECTION_OF_BEAT = {}   # beats that may only search their own setup (only where setups share wording)
+_sl = os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), "slates.json")
+if os.path.exists(_sl):
+    _c = json.load(open(_sl)); SLATE = [tuple(x) for x in _c.get("slate", SLATE)]; SECTION_OF_BEAT = _c.get("section_of_beat", {})
 
 words = []   # master list: {w,start,end,p,src}
 section = {}; cur = None

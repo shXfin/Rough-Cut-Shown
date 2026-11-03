@@ -62,3 +62,12 @@ Newest first. Each line: what changed · why · how we know it worked.
 - Wajo A cam lip sync still unverified.
 - Notch blind cut, compared by Shafin against Notch Rough Cut V2.
 - One-command runner so anyone can use it (Andrii's ask); Shownroom page after that.
+
+## 2026-11-04 (Notch)
+- build_scrub.py: scrub (every take, labelled, A over B) and rough cut from picks. 16:9 1080p, cameras fill height.
+  Clean sound per piece (hum, noise, sibilance, level), speaker's own mic per piece, visible fades (volume keyframes).
+  Prints WARNING and marks `NO B CAM` on any take a camera is missing from.
+- textsync.py: keeps every camera clip that matches a recorder file (cameras restart mid-take). verify_sync.py confirms each.
+- fix_stretched.py: re-listens to takes where Whisper stretched a word over missed speech.
+- pick.py: takes with no real voice (12 dB under the others) are never picked.
+- fetch_proxies.sh: proxies tagged square pixels (Premiere stretched cinema-width proxies).

@@ -22,6 +22,10 @@ for t in T: lines.setdefault(t["line"], []).append(t)
 for L, ts in lines.items():
     m = st.median(t["rms"] for t in ts)
     for t in ts: t["rank"] = rate(t, m)
+    # no voice: Whisper, prompted with the script, "hears" the line in near-silence (Notch L15 take 2, 22 dB
+    # under the others). A take over 12 dB quieter than the line's median is never picked.
+    for t in ts:
+        if m and t["rms"] < 0.25 * m: t["rank"] -= 1000; t["no_voice"] = True
     ts.sort(key=lambda t: -t["rank"])
 
 # Keep a running moment in one take. Picking each line's best take on its own stitched Wajo's hook from
