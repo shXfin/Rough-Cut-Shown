@@ -22,4 +22,4 @@ Tools that turn a Shown launch shoot (camera proxies, recorder audio, shooting s
 
 ## Never committed
 
-Footage, audio, transcripts, client scripts, exports and timelines stay on the T7 / Aspect (see `.gitignore`).
+Footage, audio, transcripts, client scripts, exports and timelines never go in this repo: they stay in Aspect and on each editor's own drive (see `.gitignore`). Point the tools at wherever your project folder lives.

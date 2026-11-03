@@ -18,6 +18,10 @@ for f in FILES:
     if os.path.exists(dst):
         continue
     t0 = time.time()
+    has_audio = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index",
+                                "-of", "csv=p=0", f], capture_output=True, text=True).stdout.strip()
+    if not has_audio:   # silent clip (Notch B cam C001): skip it, never crash the whole batch
+        print(f"{os.path.basename(f)}\tno sound, skipped", flush=True); continue
     segs, _ = m.transcribe(load(f), language="en", word_timestamps=True, vad_filter=False,
                            condition_on_previous_text=False, initial_prompt=PROMPT)
     words = [dict(w=w.word.strip(), start=round(w.start, 3), end=round(w.end, 3), p=round(w.probability, 2))

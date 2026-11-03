@@ -76,3 +76,8 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - **Clean up.** Keep only what the final sequences need (the final XML, its 4K version, their audio folders), the export, and the small text files (script lines, takes, picks, sync, word timings) as a record. Delete old versions' audio, previews, frame grabs, check transcripts and study copies.
 - **Tell the editor which old sequences go offline** after the clean-up, so they can remove them from the Premiere project.
 - **Caches are the editor's call:** Premiere's media cache (Settings → Media Cache → Delete) and Aspect's cache (in the Aspect app). Never delete these without asking.
+
+## Before anything else on a new project
+
+- **Check the proxies first:** that every camera clip has a proxy, that each proxy has sound (Aspect drops it on some clips), and that its length matches the original. Do this before transcribing, syncing or downloading anything big.
+- **One silent clip must never stop the batch:** skip it, list it, and place it by picture later.
