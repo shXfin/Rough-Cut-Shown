@@ -161,3 +161,9 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   (A batch import once silently skipped the scrub after the old one was already deleted.)
 - Wind is measured on the worst half second of each take, not the average: one gust over "To prove it" ruins a line.
 - Each line keeps 0.4 s after its last word, so a falling last word ("...more info") finishes.
+
+## Take Finder (visual swap, 2026-11-04)
+- `take_finder.py work_dir 4310` (run in a Terminal, not the preview runner: it needs the T7). Opens a page with one
+  row per script line: the rough cut's pick first (green), then every other take as A/B thumbnails with take number,
+  scrub timecode and flags (cameraman read, wind, missing cam, CHECK). Clicking a take jumps Premiere's playhead to
+  it in the scrub (through the bridge CLI; the token never reaches the page) and copies "L08 take 5" to paste back.

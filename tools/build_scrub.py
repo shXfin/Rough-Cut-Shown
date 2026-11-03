@@ -232,7 +232,10 @@ for L in order:
                 f'Take {tnum} of {tof} · {WHO.get(ln.get("who"), "")}{flag}')
         color = '<color><alpha>0</alpha><red>255</red><green>0</green><blue>0</blue></color>' if miss or why else ""
         markers.append(f'<marker>{color}<name>{escape(name)}</name><comment>{escape(tk.get("text", ""))} || {escape(where)}</comment><in>{t}</in><out>-1</out></marker>')
-        report.append(dict(line=L, take=tnum, of=tof, src=tk["src"], at=round(t / FPS, 2), dur=round(length / FPS, 2), cams=cams))
+        mid = (tk["start"] + tk["end"]) / 2 - s0   # a frame from the middle of the take, per camera, for the take finder
+        report.append(dict(line=L, take=tnum, of=tof, src=tk["src"], at=round(t / FPS, 2), dur=round(length / FPS, 2), cams=cams,
+                           frames={c: [pth, round(at + mid, 2)] for c, (pth, at) in have.items()}, text=tk.get("text", ""),
+                           feed=bool(tk.get("off_mic")), wind=tk.get("wind_db"), check=why))
         t += length + fr(GAP_TAKE if k < len(ts) else GAP_LINE); n += 1
 
 tone = ""
