@@ -131,3 +131,13 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - A dragged word (over 0.65 s, e.g. "brand'sss... Shopify") is a voiced hesitation that silence checks miss: the
   picker penalises it. When the editor flags a pick, check every take of the line verbatim (words/s, longest word,
   longest gap) and swap; record the swap in picks.json as "override" with the reason.
+
+## Line feeds and the script check (Notch, 2026-11-04)
+- On set the cameraman often reads the line for the founder to repeat. That read is a "take" to Whisper. stumble.py
+  marks any take more than 10 dB under its recorder file's median founder level as `off_mic` (a line feed), pick.py
+  never picks it, and the scrub labels it `LINE FEED (cameraman reading it, off-mic)`. Notch had 46.
+- Never override a pick without checking its voice level: my L08 swap to take 2 put the cameraman's read in the cut.
+- After EVERY rebuild run `script_check.py work_dir rc.xml`: each rough-cut line, exactly as the timeline plays it,
+  is transcribed on its own and compared with the script. Any line under 90% is listed with script vs heard. Spelling
+  differences (15/fifteen, brand names) are fine; missing or changed words are not.
+- Exact script wording beats a smoother reworded read (the drag penalty is capped so it never outweighs this).

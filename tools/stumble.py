@@ -21,12 +21,22 @@ for t in takes:
     for ch in (0, 1):   # the speaker's own lav
         e = env(t["src"], ch)[a:b]
         if len(e) and (best is None or np.percentile(e, 90) > np.percentile(best, 90)): best = e
-    if best is None or not len(best): t["unworded"] = 0; continue
+    if best is None or not len(best): t["unworded"] = 0; t["lav_db"] = -99; continue
+    t["lav_db"] = round(float(np.percentile(best, 90)), 1)   # how loud the voice is on the nearest lav
     voiced = best > np.percentile(best, 90) - 18          # within 18 dB of the take's loud speech
     cov = np.zeros(len(best), bool)
     for w in t["words"]:
         cov[max(0, int(w["start"] / HOP) - a - 3):max(0, int(w["end"] / HOP) - a + 3)] = True   # +-60 ms slack
     t["unworded"] = round(float((voiced & ~cov).sum() * HOP), 2)
+# off-mic voice: the cameraman reading the line for the founder to repeat (Notch L08 T2/T6, ~20 dB under the
+# founders on every lav). A take over OFFMIC_DB under the median take level of its recorder file is a line feed.
+OFFMIC_DB = 10
+import statistics
+by_src = {}
+for t in takes: by_src.setdefault(t["src"], []).append(t["lav_db"])
+for t in takes:
+    t["off_mic"] = t["lav_db"] < statistics.median(by_src[t["src"]]) - OFFMIC_DB
 json.dump(takes, open(P, "w"), indent=1)
+print("off-mic takes (line feeds):", " ".join(f'{t["line"]}T{t["take"]}' for t in takes if t["off_mic"]))
 for t in takes:
     if t["line"] in sys.argv[2:]: print(t["line"], t["take"], t["src"], t["start"], "unworded", t["unworded"])

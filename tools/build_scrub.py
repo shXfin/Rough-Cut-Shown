@@ -198,6 +198,7 @@ for L in order:
         t = t_start
         if len(segs) > 1: TIGHT.append((L, len(segs) - 1, round((s1 - s0) - sum(b - a for a, b in segs), 2)))
         flag = "" if tk.get("flag") == "green" else " · reworded or rough"
+        if tk.get("off_mic"): flag = " · LINE FEED (cameraman reading it, off-mic)"
         cams = "+".join(c for c, _ in CAMS if c in have) or "sound only"
         miss = [c for c, _ in CAMS if c not in cams.split("+")]
         flag += "".join(f" · NO {c} CAM" for c in miss)   # a missing camera is flagged on the timeline, never silent
