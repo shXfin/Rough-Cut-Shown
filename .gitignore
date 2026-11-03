@@ -1,0 +1,14 @@
+# Client material never goes to GitHub: footage, audio, transcripts, scripts, exports, timelines
+work/
+reference/
+*.mp4
+*.mov
+*.wav
+*.mp3
+*.MXF
+*.mxf
+*.xml
+*.prproj
+*.docx
+.DS_Store
+__pycache__/
