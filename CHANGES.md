@@ -71,3 +71,5 @@ Newest first. Each line: what changed · why · how we know it worked.
 - fix_stretched.py: re-listens to takes where Whisper stretched a word over missed speech.
 - pick.py: takes with no real voice (12 dB under the others) are never picked.
 - fetch_proxies.sh: proxies tagged square pixels (Premiere stretched cinema-width proxies).
+- coverage.py: camera coverage table right after sync; stops the run if a camera is missing anywhere.
+- Audio pass: lighter noise reduction, hum notches, presence EQ, soft de-ess, per-line loudness levelling to -16 LUFS.

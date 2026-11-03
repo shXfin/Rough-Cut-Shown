@@ -83,6 +83,10 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - **One silent clip must never stop the batch:** skip it, list it, and place it by picture later.
 
 ## Camera coverage is checked, never assumed (Notch, 2026-11-04)
+- FIRST, right after sync and before takes, scrub or any edit: run `coverage.py work_dir`. It prints, per recorder
+  file, how much of the speech each camera covers, and exits 2 if any camera is under 90% anywhere. On exit 2 the run
+  stops and the editor is told which camera, which files, and the likely cause (stopped rolling, missing card, failed
+  sync). Socrates only falls back to another angle silently; we flag instead.
 - Every camera must sit on every take where it was rolling. Sync keeps EVERY camera clip that matches a recorder
   file (textsync.py), not only the best one: cameras stop and restart inside one recorder take.
 - Each sync is confirmed word by word (verify_sync.py) before it is used.
@@ -90,7 +94,9 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   `NO B CAM`. The editor is told in chat, with the line list and the reason (footage stops, or sync failed).
 - If a camera's footage simply ends (Notch B cam stops during MixPre-017), say so and ask whether another card exists.
 
-## Sound per speaker
+## Sound per speaker (audio engineer pass)
+- Natural first: gentle noise reduction (never watery), hum notches, light EQ (less boxy, a touch of presence),
+  soft de-ess, light 2:1 compression, then every piece levelled to the same loudness (-16 LUFS stereo, peaks < -1.5 dB).
 - Recorder channels are separate lavs, not a mix. Each piece uses the channel where it is loudest (best_channel).
 - A take more than 12 dB under the line's other takes has no voice (Whisper invented it): never picked.
 - A word longer than 1.5 s is a timing failure: fix_stretched.py re-listens and keeps the most complete read.

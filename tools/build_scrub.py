@@ -38,9 +38,15 @@ def size(p):
         _size[p] = (int(o[0]), int(o[1])) if len(o) == 2 else (1920, 1080)
     return _size[p]
 BAKE = os.environ.get("BAKE") == "1"   # clean each piece (Mateus: noise, hum, sibilance)
-VO = os.path.join(W, "vo_RC" if RC else "vo_SCRUB"); GAIN_DB = float(os.environ.get("GAIN_DB", "0"))
-CLEAN = ("highpass=f=80,equalizer=f=120:t=q:w=8:g=-12,equalizer=f=180:t=q:w=8:g=-8,"   # rumble + 60 Hz hum harmonics (US shoot)
-         "afftdn=nr=12:nf=-42:tn=1,deesser=i=0.35,acompressor=threshold=-30dB:ratio=2.5:attack=15:release=200:makeup=1,volume={g}dB,alimiter=limit=0.79:level=false")
+VO = os.path.join(W, "vo_RC" if RC else "vo_SCRUB"); 
+CLEAN = ("highpass=f=75:poles=2,"                                          # rumble, wind, handling
+         "equalizer=f=60:t=q:w=10:g=-18,equalizer=f=120:t=q:w=10:g=-10,equalizer=f=180:t=q:w=10:g=-6,"   # 60 Hz hum (US mains)
+         "afftdn=nr=10:nf=-45:tn=1,"                                            # gentle broadband noise: never watery
+         "equalizer=f=250:t=q:w=1.2:g=-2,equalizer=f=4500:t=q:w=1.5:g=1.5,"      # less boxy lav, a touch of presence
+         "deesser=i=0.25:m=0.5:f=0.5,"                                          # soft de-ess (the presence lift adds s)
+         "acompressor=threshold=-26dB:ratio=2:attack=20:release=250:knee=6")     # light glue, keeps it natural
+TARGET_LUFS = -19.0   # measured mono; the stereo file plays at -16 LUFS. Every piece levelled to the same loudness, so both founders and every take match
+
 FADE = 0.083 if RC else 0.25   # visible fade per clip (volume keyframes). Rough cut: 2 frames where the take changes (inside
 # the 0.2 s handle), none at a join inside one take, so a running sentence never dips. The baked file only gets a 12 ms anti-click.
 # Scrub: 0.25 s inside each take's 0.5 s handle, so no word is touched
@@ -58,8 +64,17 @@ CHAN = {}
 def bake(wav, s0, s1, n, fin=0.012, fout=0.012):
     os.makedirs(VO, exist_ok=True); out = os.path.join(VO, f"{'rc' if RC else 'take'}_{n:03d}.wav"); d = s1 - s0
     ch, lv = best_channel(wav, s0, d); CHAN[n] = (ch + 1, [round(x, 1) for x in lv])
-    af = f"pan=stereo|c0=c{ch}|c1=c{ch}," + CLEAN.format(g=GAIN_DB) + f",afade=t=in:d={fin},afade=t=out:st={d-fout:.3f}:d={fout}"
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{s0:.3f}", "-t", f"{d:.3f}", "-i", wav, "-af", af, "-ar", "48000", "-c:a", "pcm_s24le", out], check=True)
+    af = f"pan=mono|c0=c{ch}," + CLEAN
+    tmp = out + ".tmp.wav"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{s0:.3f}", "-t", f"{d:.3f}", "-i", wav, "-af", af, "-ar", "48000", "-c:a", "pcm_f32le", tmp], check=True)
+    o = subprocess.run(["ffmpeg", "-hide_banner", "-i", tmp, "-af", "ebur128", "-f", "null", "-"], capture_output=True, text=True).stderr
+    I = [l for l in o.splitlines() if l.strip().startswith("I:")]
+    gain = TARGET_LUFS - float(I[-1].split()[1]) if I and "-inf" not in I[-1] else 0
+    gain = max(-12, min(30, gain))   # dialogue levelling, like riding the fader per line
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", tmp, "-af",
+                    f"volume={gain:.2f}dB,alimiter=limit=0.79:level=false,afade=t=in:d={fin},afade=t=out:st={d-fout:.3f}:d={fout},pan=stereo|c0=c0|c1=c0",
+                    "-c:a", "pcm_s24le", out], check=True)
+    os.remove(tmp)
     return out
 def cam_for(cam, wav, t0, t1):   # the verified camera clip that covers this take, and where in it
     for r in SYNC[cam].get(wav, []):
