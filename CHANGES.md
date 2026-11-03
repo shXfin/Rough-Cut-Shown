@@ -73,3 +73,6 @@ Newest first. Each line: what changed · why · how we know it worked.
 - fetch_proxies.sh: proxies tagged square pixels (Premiere stretched cinema-width proxies).
 - coverage.py: camera coverage table right after sync; stops the run if a camera is missing anywhere.
 - Audio pass: lighter noise reduction, hum notches, presence EQ, soft de-ess, per-line loudness levelling to -16 LUFS.
+- stumble.py + pick.py: stumbles (unworded talking) and halting pauses cost points.
+- build_scrub.py: angle switch / 15% punch-in at every take change (no jump cuts), steep wind cut, room tone bed on A2
+  chosen by sound, new file names per build and never deletes pieces Premiere still uses, LINE= mode for takes-by-line.

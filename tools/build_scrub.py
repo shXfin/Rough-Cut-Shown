@@ -38,13 +38,14 @@ def size(p):
         _size[p] = (int(o[0]), int(o[1])) if len(o) == 2 else (1920, 1080)
     return _size[p]
 BAKE = os.environ.get("BAKE") == "1"   # clean each piece (Mateus: noise, hum, sibilance)
-VO = os.path.join(W, "vo_RC" if RC else "vo_SCRUB"); 
-CLEAN = ("highpass=f=75:poles=2,"                                          # rumble, wind, handling
+VO = os.path.join(W, "vo_RC" if RC else (f"vo_line_{os.environ['LINE']}" if os.environ.get("LINE") else "vo_SCRUB")); 
+CLEAN = ("highpass=f=90:poles=2,highpass=f=90:poles=2,"                 # wind and rumble: steep 24 dB/oct under the voice
          "equalizer=f=60:t=q:w=10:g=-18,equalizer=f=120:t=q:w=10:g=-10,equalizer=f=180:t=q:w=10:g=-6,"   # 60 Hz hum (US mains)
          "afftdn=nr=10:nf=-45:tn=1,"                                            # gentle broadband noise: never watery
          "equalizer=f=250:t=q:w=1.2:g=-2,equalizer=f=4500:t=q:w=1.5:g=1.5,"      # less boxy lav, a touch of presence
          "deesser=i=0.25:m=0.5:f=0.5,"                                          # soft de-ess (the presence lift adds s)
          "acompressor=threshold=-26dB:ratio=2:attack=20:release=250:knee=6")     # light glue, keeps it natural
+TONE_UNDER_DB = 6   # outdoors the bed only smooths the cuts; indoors it can sit at 0-3
 TARGET_LUFS = -19.0   # measured mono; the stereo file plays at -16 LUFS. Every piece levelled to the same loudness, so both founders and every take match
 
 FADE = 0.083 if RC else 0.25   # visible fade per clip (volume keyframes). Rough cut: 2 frames where the take changes (inside
@@ -60,9 +61,12 @@ def best_channel(wav, s0, d):
         m = [l for l in o.splitlines() if "mean_volume" in l]
         lv.append(float(m[0].split(":")[1].split()[0]) if m else -99)
     return max(range(4), key=lambda c: lv[c]), lv
-CHAN = {}
+CHAN = {}; GAINS = []
+import time, glob as _g
+STAMP = time.strftime("%H%M%S")   # new names every build: reusing a name left Premiere drawing the old (or no) waveform
+# old pieces stay on disk: the sequence open in Premiere still points at them (deleting them sent it offline)
 def bake(wav, s0, s1, n, fin=0.012, fout=0.012):
-    os.makedirs(VO, exist_ok=True); out = os.path.join(VO, f"{'rc' if RC else 'take'}_{n:03d}.wav"); d = s1 - s0
+    os.makedirs(VO, exist_ok=True); out = os.path.join(VO, f"{'rc' if RC else 'take'}_{STAMP}_{n:03d}.wav"); d = s1 - s0
     ch, lv = best_channel(wav, s0, d); CHAN[n] = (ch + 1, [round(x, 1) for x in lv])
     af = f"pan=mono|c0=c{ch}," + CLEAN
     tmp = out + ".tmp.wav"
@@ -70,7 +74,7 @@ def bake(wav, s0, s1, n, fin=0.012, fout=0.012):
     o = subprocess.run(["ffmpeg", "-hide_banner", "-i", tmp, "-af", "ebur128", "-f", "null", "-"], capture_output=True, text=True).stderr
     I = [l for l in o.splitlines() if l.strip().startswith("I:")]
     gain = TARGET_LUFS - float(I[-1].split()[1]) if I and "-inf" not in I[-1] else 0
-    gain = max(-12, min(30, gain))   # dialogue levelling, like riding the fader per line
+    gain = max(-12, min(30, gain)); GAINS.append(gain)   # dialogue levelling, like riding the fader per line
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", tmp, "-af",
                     f"volume={gain:.2f}dB,alimiter=limit=0.79:level=false,afade=t=in:d={fin},afade=t=out:st={d-fout:.3f}:d={fout},pan=stereo|c0=c0|c1=c0",
                     "-c:a", "pcm_s24le", out], check=True)
@@ -96,7 +100,7 @@ def file_el(path, kind):
         media = f'<audio><channelcount>{2 if path.startswith(VO) else 4}</channelcount></audio>'
     return (f'<file id="{fid}"><name>{escape(os.path.basename(path))}</name><pathurl>file://localhost{urllib.parse.quote(path)}</pathurl>'
             f'{RATE}<duration>{fr(dur(path))}</duration><media>{media}</media></file>')
-def clip(cid, path, kind, start, inp, length, enabled=True, fin=0, fout=0):
+def clip(cid, path, kind, start, inp, length, enabled=True, fin=0, fout=0, punch=1.0):
     st = f'<sourcetrack><mediatype>audio</mediatype><trackindex>{REC_TRACK}</trackindex></sourcetrack>' if kind == "audio" else ""
     en = "" if enabled else "<enabled>FALSE</enabled>"
     fx = ""
@@ -109,7 +113,7 @@ def clip(cid, path, kind, start, inp, length, enabled=True, fin=0, fout=0):
               + "".join(f'<keyframe><when>{w}</when><value>{v}</value></keyframe>' for w, v in ks) + '</parameter></effect></filter>')
     if kind == "video":   # fill the 16:9 frame's height; a cinema-width camera loses a thin strip each side
         fx = (f'<filter><effect><name>Basic Motion</name><effectid>basic</effectid><effectcategory>motion</effectcategory><effecttype>motion</effecttype><mediatype>video</mediatype>'
-              f'<parameter><parameterid>scale</parameterid><name>Scale</name><value>{round(SH / size(path)[1] * 100, 3)}</value></parameter></effect></filter>')
+              f'<parameter><parameterid>scale</parameterid><name>Scale</name><value>{round(SH / size(path)[1] * 100 * punch, 3)}</value></parameter></effect></filter>')
     return (f'<clipitem id="{cid}"><name>{escape(os.path.basename(path))}</name>{en}<duration>{fr(dur(path))}</duration>{RATE}'
             f'<start>{start}</start><end>{start+length}</end><in>{inp}</in><out>{inp+length}</out>{file_el(path, kind)}{st}{fx}</clipitem>')
 
@@ -119,6 +123,8 @@ WHO = {"FOUNDER1": "Founder 1", "FOUNDER2": "Founder 2"}
 order = list(LINES)
 by_line = {}
 for t in TAKES: by_line.setdefault(t["line"], []).append(t)
+ONLY = os.environ.get("LINE")   # takes-by-line: one short sequence per script line, every take of it back to back
+if ONLY: by_line = {ONLY: by_line.get(ONLY, [])}
 if RC:   # keep only each main line's pick (pick.py), in script order
     PICKS = {p["line"]: p for p in J("picks.json")}
     by_line = {L: [t for t in ts if L in PICKS and t["take"] == PICKS[L]["take"] and t["src"] == PICKS[L]["src"]]
@@ -126,6 +132,7 @@ if RC:   # keep only each main line's pick (pick.py), in script order
 v = {c: [] for c, _ in CAMS}; aud, markers = [], []
 t = 0; n = 0; report = []; MAIN_PATH = None
 JOIN_IN, JOIN_OUT = {}, {}
+LOOK = (None, 1.0); PUNCH = 1.15   # 4K source: a 15% punch-in stays sharp
 if RC:
     seq_ = [(L, by_line[L][0]) for L in order if by_line.get(L)]
     for (La, a), (Lb, b) in zip(seq_, seq_[1:]):
@@ -144,11 +151,21 @@ for L in order:
         length = fr(s1) - fr(s0)
         wav = SRC.get(tk["src"])
         on = None
+        have = {}
         for cam, _ in CAMS:
             path, at = cam_for(cam, tk["src"], s0, s1)
-            if path:
-                if cam == CAMS[0][0] and MAIN_PATH is None: MAIN_PATH = path
-                v[cam].append(clip(f"v{cam}{n}", path, "video", t, fr(at), length, enabled=on is None)); on = on or cam
+            if path: have[cam] = (path, at)
+        look = (next(iter(have), None), 1.0)
+        if RC and have:   # a take change on the same framing is a jump cut (faces shift): change angle, or punch in
+            if L in JOIN_IN and LOOK[0] in have: look = LOOK      # same take running on: keep the shot
+            else:
+                other = [c for c in have if c != LOOK[0]]
+                look = (other[0], 1.0) if other else (LOOK[0], 1.0 if LOOK[1] != 1.0 else PUNCH)
+            LOOK = look
+        for cam, (path, at) in have.items():
+            if cam == CAMS[0][0] and MAIN_PATH is None: MAIN_PATH = path
+            v[cam].append(clip(f"v{cam}{n}", path, "video", t, fr(at), length, enabled=(cam == look[0]), punch=look[1] if cam == look[0] else 1.0))
+            on = on or cam
         if wav and BAKE: aud.append(clip(f"a{n}", bake(wav, s0, s1, n), "audio", t, 0, length, fin=0 if RC and L in JOIN_IN else FADE, fout=0 if RC and L in JOIN_OUT else FADE))
         elif wav: aud.append(clip(f"a{n}", wav, "audio", t, fr(s0), length))
         flag = "" if tk.get("flag") == "green" else " · reworded or rough"
@@ -161,12 +178,46 @@ for L in order:
         report.append(dict(line=L, take=k, of=len(ts), at=round(t / FPS, 2), dur=round(length / FPS, 2), cams=cams))
         t += length + fr(GAP_TAKE if k < len(ts) else GAP_LINE); n += 1
 
+tone = ""
+if BAKE and GAINS:   # room tone under everything: no dead air in gaps, and the background never drops out at a cut
+    import statistics
+    import numpy as np
+    def steadiest(src, lo, hi, ch, win=3.0):   # the 3 s with the lowest loudest moment: no bump, cough or far voice
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{lo:.3f}", "-t", f"{hi-lo:.3f}", "-i", SRC[src], "-af", f"pan=mono|c0=c{ch}",
+                              "-ar", "8000", "-f", "s16le", "-"], capture_output=True).stdout
+        x = np.frombuffer(raw, np.int16).astype(np.float32) / 32768; h = 400; m = len(x) // h
+        if m < win * 20 + 6: return None
+        r = 20 * np.log10(np.sqrt((x[:m*h].reshape(m, h) ** 2).mean(1)) + 1e-9); k = int(win * 20)
+        peaks = np.array([r[i:i+k].max() for i in range(0, m - k, 5)]); i = int(peaks.argmin()) * 5
+        return peaks.min(), lo + i / 20
+    best = None
+    for f in sorted(os.listdir(os.path.join(W, "words"))):
+        src = f[:-len(".words.json")]
+        if src not in SRC: continue
+        ws = json.load(open(os.path.join(W, "words", f)))
+        for a_, b_ in zip(ws, ws[1:]):
+            if b_["start"] - a_["end"] > 3.6:
+                ch, _ = best_channel(SRC[src], a_["end"] + 0.3, b_["start"] - a_["end"] - 0.6)
+                q = steadiest(src, a_["end"] + 0.3, b_["start"] - 0.3, ch)
+                if q and (best is None or q[0] < best[3]): best = (src, q[1], 3.0, q[0])
+    best = best[:3] if best else None
+    if best:
+        src, s0, d = best; ch, _ = best_channel(SRC[src], s0, d); tp = os.path.join(VO, f"roomtone_{STAMP}.wav")
+        g = statistics.median(GAINS) - TONE_UNDER_DB
+        seg = tp + ".seg.wav"   # clean the quiet stretch once, then loop it with a short crossfade-free fade at each end
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{s0:.3f}", "-t", f"{d:.3f}", "-i", SRC[src], "-af",
+                        f"pan=mono|c0=c{ch}," + CLEAN + f",volume={g:.2f}dB,afade=t=in:d=0.05,afade=t=out:st={d-0.05:.3f}:d=0.05", "-ar", "48000", seg], check=True)
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-stream_loop", "-1", "-i", seg, "-t", f"{t / FPS:.3f}",
+                        "-af", "pan=stereo|c0=c0|c1=c0", "-c:a", "pcm_s24le", tp], check=True)
+        os.remove(seg)
+        tone = '<track>' + clip("tone", tp, "audio", 0, 0, t) + '</track>'
+        print(f"room tone: {src} {s0:.1f}s for {d:.1f}s (looped), {TONE_UNDER_DB} dB under the dialogue's noise floor", file=sys.stderr)
 SEQ = os.path.splitext(os.path.basename(OUT))[0]
 vt = "".join(f'<track>{"".join(v[c])}</track>' for c in reversed([c for c, _ in CAMS]))   # V1 = B, V2 = A (top)
 xml = (f'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE xmeml>\n<xmeml version="4"><sequence id="{SEQ}"><name>{SEQ}</name>'
        f'<duration>{t}</duration>{RATE}<timecode>{RATE}<string>00:00:00:00</string><frame>0</frame><displayformat>NDF</displayformat></timecode>'
        f'<media><video><format><samplecharacteristics>{RATE}<width>{SW}</width><height>{SH}</height><pixelaspectratio>square</pixelaspectratio></samplecharacteristics></format>'
-       f'{vt}</video><audio><track>{"".join(aud)}</track></audio></media>{"".join(markers)}</sequence></xmeml>\n')
+       f'{vt}</video><audio><track>{"".join(aud)}</track>{tone}</audio></media>{"".join(markers)}</sequence></xmeml>\n')
 open(OUT, "w").write(xml)
 json.dump(report, open(OUT.replace(".xml", ".takes.json"), "w"), indent=1)
 both = sum(r["cams"] == "A+B" for r in report); none = sum(r["cams"] == "sound only" for r in report)

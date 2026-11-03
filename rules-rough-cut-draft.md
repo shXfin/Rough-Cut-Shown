@@ -101,3 +101,25 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - A take more than 12 dB under the line's other takes has no voice (Whisper invented it): never picked.
 - A word longer than 1.5 s is a timing failure: fix_stretched.py re-listens and keeps the most complete read.
 - Check transcription runs without the script as a prompt, and any line it misses is re-checked on its own.
+
+## Notch round 3 fixes (2026-11-04, from Shafin's review)
+### Picking: stumbles
+- Whisper writes a stumbled take as clean text. `stumble.py` measures talking that no word covers (false start,
+  "uh", repeated half-word) and pick.py takes 8 points per second of it.
+- Halting delivery counts too: pause time mid-sentence (not after a comma or stop) over 0.3 s costs 10 points per
+  second. Notch L08 take 3 has a 0.7 s pause inside "brand's ... Shopify": the editor's ear decides those.
+### Swapping a bad pick fast
+- Every line also gets its own short sequence in `Takes by line` (L08 = every take of line 8, back to back,
+  labelled). Watch it, then tell the agent "L08 take 5" or swap by hand. The Markers panel search ("L08") also
+  jumps to that line's takes in the long scrub.
+### Jump cuts (faces shift at a cut)
+- Two takes on the same framing never butt together. At every take change the rough cut switches angle (A <-> B);
+  where only one camera exists it alternates a 15% punch-in (4K source stays sharp). Lines that run on in one take
+  keep the shot. This is what the editor's cut does (A cam medium, punched-in A, B wide).
+### Sound
+- Wind: steep 24 dB/oct high-pass at 90 Hz, then gentle broadband noise reduction. Never over-process.
+- Room tone: a bed on A2 under the whole sequence, from the steadiest 3 s of the quietest pause (chosen by sound,
+  not by transcript gaps: a "silent" gap can hold a bump or a far voice). Outdoors 6 dB under the dialogue noise
+  floor (it only smooths cuts); indoors 0-3 dB under, where it matters more.
+- Far-away voices (crew, passers-by) under a line: flag them; a gate or a hand fix in Premiere.
+- Baked files get new names every build: reusing a name made Premiere show a stale or blank waveform.

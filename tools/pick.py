@@ -11,6 +11,9 @@ def rate(t, line_rms):
     s -= 6*sum(x in FILL and x not in scr for x in toks)
     s -= 6*sum(toks[i] == toks[i+1] for i in range(n-1))
     s -= 4*sum(w[i+1]["start"]-w[i]["end"] > 0.6 for i in range(n-1))
+    # halting delivery: pause time mid-sentence (not after a comma or full stop) reads as a stumble on screen
+    s -= 10*sum(max(0, w[i+1]["start"]-w[i]["end"]-0.3) for i in range(n-1) if not w[i]["w"].rstrip().endswith((",", ".", "?", "!", ":")))
+    s -= 8*t.get("unworded", 0)   # stumble.py: talking that no word covers (false start, "uh", repeated half-word)
     wps = n/dur; s += 15-min(15, 10*max(0, 2.4-wps, wps-3.4))
     s += min(5, max(-5, 8*(t["rms"]/line_rms-1))) if line_rms else 0
     s += min(3, t["take"]-1)
