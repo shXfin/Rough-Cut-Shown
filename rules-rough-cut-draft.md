@@ -128,3 +128,6 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - After cleaning, every rough-cut piece is scanned for silence over 0.5 s inside the line (not the lead-in or tail).
   Each is cut down to a 0.35 s breath, and the cut is hidden like a take change (angle switch, or punch-in).
   The build lists them: "tightened L20: 2 pause(s), 0.39 s of thinking removed". Pauses at sentence ends stay.
+- A dragged word (over 0.65 s, e.g. "brand'sss... Shopify") is a voiced hesitation that silence checks miss: the
+  picker penalises it. When the editor flags a pick, check every take of the line verbatim (words/s, longest word,
+  longest gap) and swap; record the swap in picks.json as "override" with the reason.
