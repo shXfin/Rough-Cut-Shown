@@ -16,6 +16,7 @@ def rate(t, line_rms):
     s -= 8*t.get("unworded", 0)   # stumble.py: talking that no word covers (false start, "uh", repeated half-word)
     # a dragged word ("brand'sss... Shopify") is voiced hesitation: silence checks miss it (Notch L08 T3, 0.74 s)
     s -= min(5, 30*max(0, max(x["end"]-x["start"] for x in w if len(x["w"]) < 12) - 0.65)) if any(len(x["w"]) < 12 for x in w) else 0
+    s -= min(12, max(0, t.get("wind_db", -99) - 8))   # stumble.py: worst half second of wind; typical takes peak ~5 dB
     # capped at 5: exact wording outweighs a dragged word (a reworded take that drops "Notch got" is worse)
     wps = n/dur; s += 15-min(15, 10*max(0, 2.4-wps, wps-3.4))
     s += min(5, max(-5, 8*(t["rms"]/line_rms-1))) if line_rms else 0

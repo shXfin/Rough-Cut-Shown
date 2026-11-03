@@ -141,3 +141,23 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   is transcribed on its own and compared with the script. Any line under 90% is listed with script vs heard. Spelling
   differences (15/fifteen, brand names) are fine; missing or changed words are not.
 - Exact script wording beats a smoother reworded read (the drag penalty is capped so it never outweighs this).
+
+## Editor workflow: rough cut <-> scrub (Notch, 2026-11-04)
+- Every rough-cut marker shows the REAL take number ("L08 · Take 3 of 8"), the same number the scrub uses.
+- Every marker comment says where the piece came from and where its alternatives are:
+  `Recorder MixPre-013 @ 01:36.2 | A cam 7T0A9130 @ 01:38.7 | B cam A_0001C011 @ 01:37.9 | in scrub @ 00:12:34:05`.
+  The recorder WAV, the A cam file and the B cam file are three recordings of the same moment; the times say where
+  that moment is inside each file.
+- Lines a person should hear get a red marker starting `CHECK:` with the reason (close call, wind, dragged word,
+  pause tightened, missing cam, reworded), and a list `<rc>.needs_your_ear.txt` with the scrub timecode of the other
+  takes. The agent hands that list to the editor instead of guessing.
+- To swap: open the scrub at that timecode (or `Takes by line/L08`), pick, tell the agent "L08 take 5".
+- Visual problems the sound can't show (the other founder coughing, looking away) are the editor's call; flag them
+  and they get added to the list.
+
+## Premiere safety
+- Sequences go into Premiere ONLY through `ppro_swap.py "Notch/Sequences" "name" file.xml`: import first, confirm the
+  new sequence exists and has clips, then replace the old one in that exact bin path. A failed import keeps the old.
+  (A batch import once silently skipped the scrub after the old one was already deleted.)
+- Wind is measured on the worst half second of each take, not the average: one gust over "To prove it" ruins a line.
+- Each line keeps 0.4 s after its last word, so a falling last word ("...more info") finishes.

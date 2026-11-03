@@ -3,7 +3,7 @@
 # Reviewers pick takes from it; the rough cut is built from the picks afterwards.
 # Inputs in work_dir: lines.json, takes.json, sources.json, sync_a_ok.jsonl / sync_b_ok.jsonl
 # (verified syncs: cam_time = recorder_time + offset_s). Cameras without a verified sync for a take are left off.
-import json, os, subprocess, sys, urllib.parse
+import json, os, re, subprocess, sys, urllib.parse
 from xml.sax.saxutils import escape
 W, OUT = sys.argv[1], sys.argv[2]
 RC = len(sys.argv) > 3 and sys.argv[3] == "--rough-cut"   # rough cut: only the picked take of each main line, butted together
@@ -13,7 +13,8 @@ TAKES = J("takes.json")
 SRC = {os.path.basename(p): p for p in J("sources.json")}
 FPS = 24000/1001; fr = lambda s: int(round(s * FPS))
 GAP_TAKE, GAP_LINE, HANDLE = 1.0, 3.0, 0.5
-if RC: GAP_TAKE, GAP_LINE, HANDLE = 0.0, 0.0, 0.2   # seconds between takes / between lines; air kept around each take
+TAIL = 0.5   # after the last word: Whisper ends words early, and a falling last word ("...more info") needs room to finish
+if RC: GAP_TAKE, GAP_LINE, HANDLE, TAIL = 0.0, 0.0, 0.2, 0.4   # seconds between takes / between lines; air kept around each take
 REC_TRACK = 1                                 # unbaked scrub only; baked pieces pick the speaker's own channel (best_channel)
 CAMS = [("A", "sync_a_ok.jsonl"), ("B", "sync_b_ok.jsonl")]   # A shown on top, B underneath, ready to switch
 
@@ -123,8 +124,17 @@ WHO = {"FOUNDER1": "Founder 1", "FOUNDER2": "Founder 2"}
 order = list(LINES)
 by_line = {}
 for t in TAKES: by_line.setdefault(t["line"], []).append(t)
+N_TAKES = {}
+for _t in TAKES: N_TAKES[_t["line"]] = N_TAKES.get(_t["line"], 0) + 1
+NEEDS = []
+_sr = os.environ.get("SCRUB_REPORT", os.path.join(W, "notch_SCRUB_work.takes.json"))   # where each take sits in the scrub
+SCRUB_AT = {(r["line"], r["take"]): r["at"] for r in (json.load(open(_sr)) if os.path.exists(_sr) else [])}
+def tc(x):
+    if x is None: return "-"
+    f = int(round(x * FPS)); return f"{f // (24*3600):02d}:{f // (24*60) % 60:02d}:{f // 24 % 60:02d}:{f % 24:02d}"
 ONLY = os.environ.get("LINE")   # takes-by-line: one short sequence per script line, every take of it back to back
 if ONLY: by_line = {ONLY: by_line.get(ONLY, [])}
+PICKS = {}
 if RC:   # keep only each main line's pick (pick.py), in script order
     PICKS = {p["line"]: p for p in J("picks.json")}
     by_line = {L: [t for t in ts if L in PICKS and t["take"] == PICKS[L]["take"] and t["src"] == PICKS[L]["src"]]
@@ -159,7 +169,7 @@ for L in order:
     if not ts: continue
     ln = LINES[L]
     for k, tk in enumerate(ts, 1):
-        s0, s1 = max(tk["start"] - HANDLE, 0), tk["end"] + HANDLE
+        s0, s1 = max(tk["start"] - HANDLE, 0), tk["end"] + max(HANDLE, TAIL)
         if RC:   # lines that run on in one take join at the gap between them: no word plays twice
             if L in JOIN_IN: s0 = JOIN_IN[L]
             if L in JOIN_OUT: s1 = JOIN_OUT[L]
@@ -202,10 +212,27 @@ for L in order:
         cams = "+".join(c for c, _ in CAMS if c in have) or "sound only"
         miss = [c for c, _ in CAMS if c not in cams.split("+")]
         flag += "".join(f" · NO {c} CAM" for c in miss)   # a missing camera is flagged on the timeline, never silent
-        name = f'{SECTION.get(ln["beat"], ln["beat"].title())} · {L} · Take {k} of {len(ts)} · {WHO.get(ln.get("who"), "")}{flag}'
-        color = '<color><alpha>0</alpha><red>255</red><green>0</green><blue>0</blue></color>' if miss else ""
-        markers.append(f'<marker>{color}<name>{escape(name)}</name><comment>{escape(tk.get("text", ""))} | cameras: {cams}</comment><in>{t}</in><out>-1</out></marker>')
-        report.append(dict(line=L, take=k, of=len(ts), at=round(t / FPS, 2), dur=round(length / FPS, 2), cams=cams))
+        tnum, tof = tk.get("take", k), N_TAKES.get(L, len(ts))   # the take's real number, same as in the scrub
+        mm = lambda x: f"{int(x // 60):02d}:{x % 60:04.1f}"
+        where = f"Recorder {tk['src']} @ {mm(tk['start'])}" + "".join(
+            f" | {c} cam {os.path.basename(pth).replace('_proxy.mp4', '')} @ {mm(at + (tk['start'] - s0))}" for c, (pth, at) in have.items())
+        why = []
+        if RC:   # anything a person should hear before this ships: listed, marked CHECK, with where the other takes are
+            pk = PICKS.get(L, {})
+            # strong reasons only: a list of 36 of 39 lines is noise (missing cams are marked separately: NO B CAM)
+            # (no "near tie": pick.py's runner-up predates the continuity pass and pointed at the pick itself)
+            if tk.get("wind_db", -99) > 12: why.append("wind gust")
+            if max((w["end"] - w["start"] for w in tk.get("words", []) if len(w["w"]) < 12), default=0) > 0.9: why.append("dragged word")
+            if len(segs) > 1: why.append("pause tightened")
+            if tk.get("flag") != "green": why.append("reworded")
+            sc = SCRUB_AT.get((L, tnum))
+            if why: NEEDS.append((t / FPS, L, tnum, tof, ", ".join(why), sc))
+            where += f" | in scrub @ {tc(sc)}" if sc is not None else ""
+        name = (f'{"CHECK: " + ", ".join(why) + " · " if why else ""}{SECTION.get(ln["beat"], ln["beat"].title())} · {L} · '
+                f'Take {tnum} of {tof} · {WHO.get(ln.get("who"), "")}{flag}')
+        color = '<color><alpha>0</alpha><red>255</red><green>0</green><blue>0</blue></color>' if miss or why else ""
+        markers.append(f'<marker>{color}<name>{escape(name)}</name><comment>{escape(tk.get("text", ""))} || {escape(where)}</comment><in>{t}</in><out>-1</out></marker>')
+        report.append(dict(line=L, take=tnum, of=tof, src=tk["src"], at=round(t / FPS, 2), dur=round(length / FPS, 2), cams=cams))
         t += length + fr(GAP_TAKE if k < len(ts) else GAP_LINE); n += 1
 
 tone = ""
@@ -255,6 +282,11 @@ gaps = {}
 for r in report:
     for c, _ in CAMS:
         if c not in r["cams"].split("+"): gaps.setdefault(c, []).append(r["line"])
+if NEEDS:   # the human list: every line a person should hear, with the scrub timecode of its other takes
+    with open(OUT.replace(".xml", ".needs_your_ear.txt"), "w") as fh:
+        for at_, L_, n_, of_, why_, sc_ in NEEDS:
+            fh.write(f"{tc(at_)}  {L_} take {n_} of {of_}: {why_}.  Other takes: scrub @ {tc(sc_)} or 'Takes by line/{L_}'\n")
+    print(f"NEEDS YOUR EAR: {len(NEEDS)} lines, list in {os.path.basename(OUT.replace('.xml', '.needs_your_ear.txt'))}", file=sys.stderr)
 for L_, k_, cut_ in TIGHT: print(f"tightened {L_}: {k_} pause(s), {cut_} s of thinking removed", file=sys.stderr)
 for c, ls in gaps.items():   # loud, so it reaches the editor: a camera that silently drops out is the worst miss
     print(f"WARNING: no {c} cam on {len(ls)} pieces: {' '.join(sorted(set(ls)))}", file=sys.stderr)

@@ -76,3 +76,7 @@ Newest first. Each line: what changed · why · how we know it worked.
 - stumble.py + pick.py: stumbles (unworded talking) and halting pauses cost points.
 - build_scrub.py: angle switch / 15% punch-in at every take change (no jump cuts), steep wind cut, room tone bed on A2
   chosen by sound, new file names per build and never deletes pieces Premiere still uses, LINE= mode for takes-by-line.
+- ppro_swap.py: the only way sequences enter Premiere (import, verify, then replace in an exact bin path).
+- Markers carry real take numbers, file positions (recorder / A / B) and the scrub timecode; needs_your_ear.txt
+  lists lines a person should hear (wind gust, dragged word, tightened pause, reworded).
+- Wind measured on the worst half second per take; 0.4 s kept after each line's last word.
