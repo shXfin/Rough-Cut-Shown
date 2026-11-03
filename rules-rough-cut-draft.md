@@ -123,3 +123,8 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   floor (it only smooths cuts); indoors 0-3 dB under, where it matters more.
 - Far-away voices (crew, passers-by) under a line: flag them; a gate or a hand fix in Premiere.
 - Baked files get new names every build: reusing a name made Premiere show a stale or blank waveform.
+
+### Thinking pauses inside a line
+- After cleaning, every rough-cut piece is scanned for silence over 0.5 s inside the line (not the lead-in or tail).
+  Each is cut down to a 0.35 s breath, and the cut is hidden like a take change (angle switch, or punch-in).
+  The build lists them: "tightened L20: 2 pause(s), 0.39 s of thinking removed". Pauses at sentence ends stay.

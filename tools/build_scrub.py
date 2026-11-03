@@ -38,7 +38,7 @@ def size(p):
         _size[p] = (int(o[0]), int(o[1])) if len(o) == 2 else (1920, 1080)
     return _size[p]
 BAKE = os.environ.get("BAKE") == "1"   # clean each piece (Mateus: noise, hum, sibilance)
-VO = os.path.join(W, "vo_RC" if RC else (f"vo_line_{os.environ['LINE']}" if os.environ.get("LINE") else "vo_SCRUB")); 
+VO = os.path.abspath(os.path.join(W, "vo_RC" if RC else (f"vo_line_{os.environ['LINE']}" if os.environ.get("LINE") else "vo_SCRUB"))); 
 CLEAN = ("highpass=f=90:poles=2,highpass=f=90:poles=2,"                 # wind and rumble: steep 24 dB/oct under the voice
          "equalizer=f=60:t=q:w=10:g=-18,equalizer=f=120:t=q:w=10:g=-10,equalizer=f=180:t=q:w=10:g=-6,"   # 60 Hz hum (US mains)
          "afftdn=nr=10:nf=-45:tn=1,"                                            # gentle broadband noise: never watery
@@ -132,6 +132,21 @@ if RC:   # keep only each main line's pick (pick.py), in script order
 v = {c: [] for c, _ in CAMS}; aud, markers = [], []
 t = 0; n = 0; report = []; MAIN_PATH = None
 JOIN_IN, JOIN_OUT = {}, {}
+TIGHT = []; KEEP_PAUSE = 0.35   # seconds of a long pause that stay: a breath, not a think
+def tighten(piece):
+    """Silences over 0.5 s INSIDE the line (the founder thinking mid-sentence) shrink to KEEP_PAUSE.
+    Found on the cleaned, levelled piece, so -38 dB is reliably 'not talking'. Edges are left alone."""
+    o = subprocess.run(["ffmpeg", "-hide_banner", "-i", piece, "-af", "silencedetect=n=-38dB:d=0.5", "-f", "null", "-"],
+                       capture_output=True, text=True).stderr
+    st = [float(l.split("silence_start: ")[1]) for l in o.splitlines() if "silence_start" in l]
+    en = [float(l.split("silence_end: ")[1].split()[0]) for l in o.splitlines() if "silence_end" in l]
+    d = dur(piece); segs = []; cur = 0.0
+    for a, b in zip(st, en):
+        if a < 0.3 or b > d - 0.3: continue                       # lead-in / tail: not inside the line
+        cut_in, cut_out = a + KEEP_PAUSE / 2, b - KEEP_PAUSE / 2
+        segs.append((cur, cut_in)); cur = cut_out
+    segs.append((cur, d))
+    return [(round(a, 3), round(b, 3)) for a, b in segs]
 LOOK = (None, 1.0); PUNCH = 1.15   # 4K source: a 15% punch-in stays sharp
 if RC:
     seq_ = [(L, by_line[L][0]) for L in order if by_line.get(L)]
@@ -162,14 +177,28 @@ for L in order:
                 other = [c for c in have if c != LOOK[0]]
                 look = (other[0], 1.0) if other else (LOOK[0], 1.0 if LOOK[1] != 1.0 else PUNCH)
             LOOK = look
-        for cam, (path, at) in have.items():
-            if cam == CAMS[0][0] and MAIN_PATH is None: MAIN_PATH = path
-            v[cam].append(clip(f"v{cam}{n}", path, "video", t, fr(at), length, enabled=(cam == look[0]), punch=look[1] if cam == look[0] else 1.0))
-            on = on or cam
-        if wav and BAKE: aud.append(clip(f"a{n}", bake(wav, s0, s1, n), "audio", t, 0, length, fin=0 if RC and L in JOIN_IN else FADE, fout=0 if RC and L in JOIN_OUT else FADE))
-        elif wav: aud.append(clip(f"a{n}", wav, "audio", t, fr(s0), length))
+        piece = bake(wav, s0, s1, n) if wav and BAKE else None
+        segs = tighten(piece) if RC and piece else [(0.0, s1 - s0)]   # long pauses inside the line cut down to a breath
+        t_start = t; length = 0
+        for j, (a0, a1) in enumerate(segs):
+            if j:   # a tightened pause is a cut inside the line: hide it like a take change
+                other = [c for c in have if c != look[0]]
+                look = (other[0], 1.0) if other else (look[0], 1.0 if look[1] != 1.0 else PUNCH); LOOK = look
+            sl = fr(s0 + a1) - fr(s0 + a0); cid = f"{n}" if not j else f"{n}_{j}"
+            for cam, (path, at) in have.items():
+                if cam == CAMS[0][0] and MAIN_PATH is None: MAIN_PATH = path
+                v[cam].append(clip(f"v{cam}{cid}", path, "video", t, fr(at + a0), sl, enabled=(cam == look[0]), punch=look[1] if cam == look[0] else 1.0))
+                on = on or cam
+            first, last = j == 0, j == len(segs) - 1
+            fi = (0 if RC and L in JOIN_IN else FADE) if first else 0.042   # 1 frame at a tightened pause: no click
+            fo = (0 if RC and L in JOIN_OUT else FADE) if last else 0.042
+            if piece: aud.append(clip(f"a{cid}", piece, "audio", t, fr(a0), sl, fin=fi, fout=fo))
+            elif wav: aud.append(clip(f"a{cid}", wav, "audio", t, fr(s0 + a0), sl))
+            t += sl; length += sl
+        t = t_start
+        if len(segs) > 1: TIGHT.append((L, len(segs) - 1, round((s1 - s0) - sum(b - a for a, b in segs), 2)))
         flag = "" if tk.get("flag") == "green" else " · reworded or rough"
-        cams = "+".join(c for c, _ in CAMS if any(f'id="v{c}{n}"' in x for x in v[c][-1:])) or "sound only"
+        cams = "+".join(c for c, _ in CAMS if c in have) or "sound only"
         miss = [c for c, _ in CAMS if c not in cams.split("+")]
         flag += "".join(f" · NO {c} CAM" for c in miss)   # a missing camera is flagged on the timeline, never silent
         name = f'{SECTION.get(ln["beat"], ln["beat"].title())} · {L} · Take {k} of {len(ts)} · {WHO.get(ln.get("who"), "")}{flag}'
@@ -225,6 +254,7 @@ gaps = {}
 for r in report:
     for c, _ in CAMS:
         if c not in r["cams"].split("+"): gaps.setdefault(c, []).append(r["line"])
+for L_, k_, cut_ in TIGHT: print(f"tightened {L_}: {k_} pause(s), {cut_} s of thinking removed", file=sys.stderr)
 for c, ls in gaps.items():   # loud, so it reaches the editor: a camera that silently drops out is the worst miss
     print(f"WARNING: no {c} cam on {len(ls)} pieces: {' '.join(sorted(set(ls)))}", file=sys.stderr)
 print(json.dumps(dict(takes=len(report), lines=len({r["line"] for r in report}), minutes=round(t / FPS / 60, 1),
