@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Take Finder</title>
 <style>
-:root{--bg:#232323;--panel:#2c2c2c;--ink:#e8e8e8;--muted:#9a9a9a;--rule:#3a3a3a;--pick:#3fbf86;--bad:#ff6b5c;--warn:#f0a135}
+:root{--bg:#232323;--panel:#2c2c2c;--ink:#e8e8e8;--muted:#9a9a9a;--rule:#3a3a3a;--pick:#3fbf86;--bad:#ff6b5c;--warn:#f0a135;--flag:#f5c542}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:12px/1.4 -apple-system,system-ui,sans-serif;user-select:none}
 header{position:sticky;top:0;background:var(--bg);padding:10px 10px 8px;border-bottom:1px solid var(--rule);z-index:1}
@@ -13,7 +13,14 @@ h1{margin:0;font-size:15px;font-weight:800;flex:1}
 button{background:#3a3a3a;color:var(--ink);border:1px solid #4a4a4a;border-radius:4px;padding:5px 9px;font:inherit;cursor:pointer}
 button:hover{background:#464646}
 button.go{background:#2f6b4f;border-color:#3fbf86}
+button.use{background:#2b4a6b;border-color:#5a9be0}
+button.fl{background:#4d4320;border-color:var(--flag);color:#ffe9a8}
+button.wide{flex:1;text-align:left;font-weight:700}
+.attn{background:#4a2422;border-color:#ff6b5c;color:#ffd9d4}
+.myfl{background:#3f3818;border-color:var(--flag);color:#ffe9a8}
+#rebuild{width:100%;margin-top:6px;background:#2f6b4f;border-color:#3fbf86;font-weight:800;display:none}
 select{width:100%;margin-top:8px;background:#1b1b1b;color:var(--ink);border:1px solid #4a4a4a;border-radius:4px;padding:5px;font:inherit}
+textarea{width:100%;margin-top:6px;background:#1b1b1b;color:var(--ink);border:1px solid var(--flag);border-radius:4px;padding:6px;font:inherit;resize:vertical;min-height:52px;user-select:text}
 #line{padding:12px 10px 4px}
 #line .n{font-size:18px;font-weight:800}
 #line .who{color:var(--muted);margin-left:6px}
@@ -23,33 +30,47 @@ select{width:100%;margin-top:8px;background:#1b1b1b;color:var(--ink);border:1px 
 #takes{padding:6px 10px 20px;display:grid;gap:8px}
 .take{background:var(--panel);border:2px solid transparent;border-radius:6px;padding:7px}
 .take.picked{border-color:var(--pick)}
-.take.feed{opacity:.45}
+.take.chosen{border-color:#5a9be0}
+.take.feed{opacity:.5}
 .take.here{box-shadow:0 0 0 2px #fff inset}
 .pics{display:flex;gap:4px}
 .pics div{flex:1;position:relative}
 .pics img{width:100%;height:64px;object-fit:cover;border-radius:3px;display:block;background:#000}
 .pics span{position:absolute;left:4px;top:2px;font-weight:800;font-size:11px;text-shadow:0 1px 2px #000}
 .nopic{height:64px;display:grid;place-items:center;color:var(--muted);background:#191919;border-radius:3px}
-.head{display:flex;align-items:center;gap:8px;margin-top:6px}
+.head{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap}
 .head b{font-size:13px;flex:1}
 .tags{margin-top:3px;display:flex;flex-wrap:wrap;gap:2px 10px;font-weight:700}
-.t-pick{color:var(--pick)} .t-bad{color:var(--bad)} .t-warn{color:var(--warn)} .t-muted{color:var(--muted);font-weight:500}
+.t-pick{color:var(--pick)} .t-bad{color:var(--bad)} .t-warn{color:var(--warn)} .t-muted{color:var(--muted);font-weight:500} .t-use{color:#7db7f0}
 .said{color:var(--muted);margin-top:3px}
-.attn{width:100%;background:#4a2422;border-color:#ff6b5c;color:#ffd9d4;font-weight:700;text-align:left}
-#attnList{margin-top:6px;border:1px solid var(--rule);border-radius:4px;max-height:220px;overflow:auto}
-#attnList div{padding:7px 9px;border-top:1px solid var(--rule);cursor:pointer}
-#attnList div:first-child{border-top:0}
-#attnList div:hover{background:#333}
-#attnList b{display:block}
-#attnList span{color:var(--bad)}
+.list{margin-top:6px;border:1px solid var(--rule);border-radius:4px;max-height:240px;overflow:auto;display:none}
+.list .it{display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border-top:1px solid var(--rule)}
+.list .it:first-child{border-top:0}
+.list .it:hover{background:#333}
+.list .it.done{opacity:.45}
+.list .it.done b{text-decoration:line-through}
+.list input{margin-top:2px;width:15px;height:15px;accent-color:var(--pick);flex:none;cursor:pointer}
+.list .txt{flex:1;cursor:pointer}
+.list b{display:block}
+.list .why{color:var(--bad)}
+.list .note{color:#ffe9a8}
+.list .x{color:var(--muted);cursor:pointer;padding:0 3px}
+.list .foot{display:flex;gap:6px;padding:7px 9px;border-top:1px solid var(--rule);background:#262626;position:sticky;bottom:0}
+#flagBox{display:none;margin-top:6px}
+#flagBox .ctx{color:var(--flag);font-weight:700}
 #status{color:var(--pick);min-height:14px;margin-top:6px}
 </style>
 </head>
 <body>
 <header>
-  <div class="row"><h1>Take Finder <small id="ver" style="color:#777;font-weight:500">v5</small></h1><button id="back">Back to rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
-  <div class="row" style="margin-top:8px"><button id="attn" class="attn">Needs your attention</button></div>
-  <div id="attnList" style="display:none"></div>
+  <div class="row"><h1>Take Finder <small id="ver" style="color:#777;font-weight:500">v6</small></h1><button id="back">Back to rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
+  <div class="row" style="margin-top:8px"><button id="attn" class="wide attn">Needs your attention</button><button id="myfl" class="wide myfl">My flags</button></div>
+  <div id="attnList" class="list"></div>
+  <div id="flList" class="list"></div>
+  <div class="row" style="margin-top:6px"><button id="flagHere" class="fl" style="flex:1">Flag this spot</button></div>
+  <div id="flagBox"><div class="ctx" id="flagCtx"></div><textarea id="flagNote" placeholder="What's wrong? e.g. cameraman talking at the end, wind, cut too tight"></textarea>
+    <div class="row" style="margin-top:4px"><button id="flagSave" class="fl">Save flag</button><button id="flagCancel">Cancel</button></div></div>
+  <button id="rebuild"></button>
   <select id="pickLine"></select>
   <div id="status"></div>
 </header>
@@ -64,43 +85,158 @@ window.onerror = function(m, u, l){ var h = document.getElementById("hint"); h.s
 <script>
 (function(){   // own scope: nothing here can clash with Premiere's panel globals
 const CEPHOST = window.__adobe_cep__;   // not "cep": Premiere's panels already define a global cep
-// the data file is read through Premiere's own scripting (File): Node's require isn't available in every Premiere
-const READ = `(function(){var f=new File("~/.shown/takefinder.json");if(!f.exists)return "";f.encoding="UTF-8";f.open("r");var s=f.read();f.close();return s;})()`;
-let D = null, current = null, lastKey = "";
+let D = null, current = null, lastKey = "", here = null, lastSeen = { seq: "", t: 0 }, stamp = "", tick = 0;
+let STATE = { done: {} }, FLAGS = [], OVR = {}, flagCtx = null;
 const $ = id => document.getElementById(id);
 const ev = src => new Promise(r => { if (!CEPHOST) { r("__nocep"); return; } CEPHOST.evalScript(src, r); setTimeout(() => r("__timeout"), 8000); });
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-function status(m){ $("status").textContent = m; clearTimeout(status.t); status.t = setTimeout(() => $("status").textContent = "", 4000); }
+const mmss = s => { s = Math.max(0, s); const m = Math.floor(s / 60), x = Math.floor(s % 60), f = Math.floor((s % 1) * 24); return `${m}:${String(x).padStart(2, "0")}:${String(f).padStart(2, "0")}`; };
+function status(m){ $("status").textContent = m; clearTimeout(status.t); status.t = setTimeout(() => $("status").textContent = "", 5000); }
+// files are read and written through Premiere's own scripting (File): Node's require isn't available in every Premiere
+const readJS = p => `(function(){var f=new File(${JSON.stringify(p)});if(!f.exists)return "";f.encoding="UTF-8";f.open("r");var s=f.read();f.close();return s;})()`;
+const writeJS = (p, s) => `(function(){var f=new File(${JSON.stringify(p)});f.encoding="UTF-8";f.open("w");f.write(${JSON.stringify(s)});f.close();return "ok";})()`;
+async function readJSON(p, dflt){ const raw = await ev(readJS(p)); try { return raw ? JSON.parse(raw) : dflt; } catch (e) { return dflt; } }
+async function writeJSON(p, v){ return ev(writeJS(p, JSON.stringify(v, null, 1))); }
+const STATE_F = "~/.shown/state.json", FLAGS_F = "~/.shown/flags.json";
+const ovrF = () => D.work + "/overrides.json";
+const lineOf = id => D && D.lines.find(x => x.id === id);
+const pickedTake = l => l.takes.find(t => t.picked);
+
 async function load(){
   $("hint").textContent = "Loading takes...";
-  const raw = await ev(READ);
+  const raw = await ev(readJS("~/.shown/takefinder.json"));
   try { D = JSON.parse(raw); } catch (e) {
     $("hint").style.color = "#ff6b5c";
     $("hint").textContent = raw === "" ? "No take data yet. Ask Claude to build the scrub first."
       : "Couldn't load takes: " + String(raw).slice(0, 120); return; }
+  stamp = await ev(`(function(){var f=new File("~/.shown/takefinder.json");return f.exists?String(f.modified.getTime()):"";})()`);
+  STATE = await readJSON(STATE_F, { done: {} }); STATE.done = STATE.done || {};
+  FLAGS = await readJSON(FLAGS_F, []);
+  OVR = D.work ? await readJSON(ovrF(), {}) : {};
   $("hint").style.color = ""; $("hint").textContent = "Click any clip in the rough cut or the scrub. Its other takes show up here.";
   $("pickLine").innerHTML = '<option value="">Browse a line...</option>' + D.lines.map(l =>
     `<option value="${l.id}">Line ${l.num}: ${esc(l.text.slice(0, 60))}</option>`).join("");
-  const need = D.lines.filter(l => l.check.length);
-  $("attn").textContent = need.length ? `Needs your attention (${need.length})` : "Nothing needs your attention";
-  $("attnList").innerHTML = need.map(l => `<div data-id="${l.id}"><b>Line ${l.num}: ${esc(l.text.slice(0, 50))}</b><span>${esc(l.check.join(", "))}</span></div>`).join("");
-  if (current) show(current, null);
+  drawAttn(); drawFlags(); drawRebuild();
+  if (current) show(current, here);
 }
+// ---------- Needs your attention, with a tick per line ----------
+const doneKey = id => D.client + ":" + id;
+function drawAttn(){
+  const need = D.lines.filter(l => l.check.length), left = need.filter(l => !STATE.done[doneKey(l.id)]).length;
+  $("attn").textContent = need.length ? `Needs your attention (${left} of ${need.length} left)` : "Nothing needs your attention";
+  $("attnList").innerHTML = need.map(l => { const d = !!STATE.done[doneKey(l.id)];
+    return `<div class="it${d ? " done" : ""}"><input type="checkbox" data-done="${l.id}"${d ? " checked" : ""} title="Tick when it's sorted">
+      <div class="txt" data-id="${l.id}"><b>Line ${l.num}: ${esc(l.text.slice(0, 50))}</b><span class="why">${esc(l.check.join(", "))}</span></div></div>`; }).join("");
+}
+$("attnList").addEventListener("change", async e => {
+  const id = e.target.dataset.done; if (!id) return;
+  if (e.target.checked) STATE.done[doneKey(id)] = true; else delete STATE.done[doneKey(id)];
+  await writeJSON(STATE_F, STATE); drawAttn(); $("attnList").style.display = "block";
+});
+$("attnList").addEventListener("click", async e => {   // tap a line: show its takes and jump to it in the rough cut
+  const it = e.target.closest(".txt"); if (!it) return;
+  const l = lineOf(it.dataset.id); show(l.id, null);
+  if (l.rc_at != null) { const r = await ev(jumpJS(D.rc_seq, l.rc_at + 0.05)); status(r === "ok" ? `Rough cut: Line ${l.num}` : "Couldn't find the rough cut"); }
+});
+$("attn").addEventListener("click", () => toggle("attnList"));
+function toggle(id){ const L = $(id), open = L.style.display !== "block"; $("attnList").style.display = "none"; $("flList").style.display = "none"; L.style.display = open ? "block" : "none"; }
+// ---------- Flags: mark anything you hear or see, tick it off, copy the list to Claude ----------
+function drawFlags(){
+  const mine = FLAGS.filter(f => f.client === D.client), left = mine.filter(f => !f.done).length;
+  $("myfl").textContent = mine.length ? `My flags (${left} of ${mine.length} left)` : "My flags (none yet)";
+  $("flList").innerHTML = (mine.map(f => `<div class="it${f.done ? " done" : ""}"><input type="checkbox" data-fdone="${f.id}"${f.done ? " checked" : ""} title="Tick when it's sorted">
+      <div class="txt" data-fid="${f.id}"><b>${esc(f.where)}</b><span class="note">${esc(f.note || "(no note)")}</span></div><span class="x" data-del="${f.id}" title="Remove">x</span></div>`).join("")
+    || `<div class="it"><div class="txt">No flags yet. Use "Flag this spot" or the Flag button on any take.</div></div>`)
+    + `<div class="foot"><button id="copyFl" class="fl" style="flex:1">Copy open flags for Claude</button></div>`;
+}
+function flagText(){
+  const open = FLAGS.filter(f => f.client === D.client && !f.done);
+  return `Take Finder flags, ${D.client} (${open.length}):\n` + open.map((f, i) => `${i + 1}. ${f.where}: ${f.note || "(no note)"}`).join("\n");
+}
+function copy(text){ const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select();
+  let ok = false; try { ok = document.execCommand("copy"); } catch (e) {} t.remove(); return ok; }
+$("flList").addEventListener("click", async e => {
+  if (e.target.id === "copyFl") { status(copy(flagText()) ? "Copied. Paste it to Claude (or just say: check my flags)." : "Couldn't copy. Say \"check my flags\" to Claude instead."); return; }
+  const del = e.target.dataset.del;
+  if (del) { FLAGS = FLAGS.filter(f => f.id !== del); await writeJSON(FLAGS_F, FLAGS); drawFlags(); $("flList").style.display = "block"; return; }
+  const it = e.target.closest(".txt"); if (!it || !it.dataset.fid) return;
+  const f = FLAGS.find(x => x.id === it.dataset.fid); if (!f) return;
+  if (f.line) show(f.line, f.take || null);
+  const r = await ev(jumpJS(f.seq, f.t + 0.02)); status(r === "ok" ? "Jumped to the flag" : "Couldn't find that sequence");
+});
+$("flList").addEventListener("change", async e => {
+  const id = e.target.dataset.fdone; if (!id) return;
+  const f = FLAGS.find(x => x.id === id); f.done = e.target.checked; await writeJSON(FLAGS_F, FLAGS); drawFlags(); $("flList").style.display = "block";
+});
+$("myfl").addEventListener("click", () => toggle("flList"));
+function openFlag(ctx){
+  flagCtx = ctx; $("flagCtx").textContent = "Flag: " + ctx.where; $("flagNote").value = "";
+  $("flagBox").style.display = "block"; $("flagNote").focus();
+}
+$("flagHere").addEventListener("click", async () => {   // the playhead (or selected clip) in whatever sequence is open
+  const r = await ev(SEL); const [seq, ts, nm] = String(r).split("|"); const t = parseFloat(ts);
+  if (!seq || isNaN(t)) { status("Open the rough cut or the scrub first"); return; }
+  const id = whereIs(seq, t, nm); const l = id && lineOf(id.line);
+  const name = seq === D.rc_seq ? "Rough cut" : seq === D.scrub_seq ? "Scrub" : seq;
+  const tk = l && id.take ? l.takes.find(x => x.take === id.take) : null;
+  openFlag({ seq, t, line: l ? l.id : null, take: id ? id.take : null,
+    where: `${name} at ${mmss(t)}` + (l ? `, Line ${l.num}` + (tk ? `, take ${tk.take} of ${tk.of}` : "") : "") });
+});
+$("takes").addEventListener("click", async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const l = lineOf(current), t = l.takes[+b.dataset.i];
+  if (b.classList.contains("go")) {
+    const r = await ev(jumpJS(D.scrub_seq, t.scrub_at + 0.05));
+    status(r === "ok" ? `Scrub: Line ${l.num}, take ${t.take}` : "Couldn't find the scrub sequence");
+  } else if (b.classList.contains("fl")) {
+    openFlag({ seq: D.scrub_seq, t: t.scrub_at, line: l.id, take: t.take, where: `Line ${l.num}, take ${t.take} of ${t.of} (scrub at ${mmss(t.scrub_at)})` });
+  } else if (b.classList.contains("use")) {
+    if (OVR[l.id] && OVR[l.id].take === t.take) { delete OVR[l.id]; status(`Line ${l.num}: back to Claude's pick`); }
+    else { OVR[l.id] = { take: t.take, src: t.src, how: "Use this take" }; status(`Line ${l.num}: take ${t.take} goes in on the next rebuild`); }
+    await writeJSON(ovrF(), OVR); drawRebuild(); show(l.id, here);
+  }
+});
+$("flagSave").addEventListener("click", async () => {
+  if (!flagCtx) return;
+  FLAGS.push(Object.assign({ id: String(Date.now()), client: D.client, note: $("flagNote").value.trim(), done: false,
+    when: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16).replace("T", " ") }, flagCtx));
+  await writeJSON(FLAGS_F, FLAGS); $("flagBox").style.display = "none"; flagCtx = null; drawFlags(); status("Flag saved");
+});
+$("flagCancel").addEventListener("click", () => { $("flagBox").style.display = "none"; flagCtx = null; });
+// ---------- Use this take: queued, then one rebuild applies them all ----------
+function pending(){   // your choices that the rough cut doesn't have yet
+  return Object.keys(OVR).filter(id => { const l = lineOf(id), p = l && pickedTake(l); return l && !(p && p.take === OVR[id].take && p.src === OVR[id].src); });
+}
+function drawRebuild(){
+  const n = pending().length, b = $("rebuild");
+  b.style.display = n ? "block" : "none";
+  b.textContent = `Rebuild rough cut with your ${n} swap${n > 1 ? "s" : ""} (about 3 min)`;
+}
+$("rebuild").addEventListener("click", async () => {
+  const r = await ev(`(function(){var f=new File(${JSON.stringify(D.work + "/Rebuild rough cut.command")});if(!f.exists)return "missing";f.execute();return "ok";})()`);
+  status(r === "ok" ? "Rebuilding in Terminal. Your old rough cut is kept in Sequences/Old." : "Rebuild script not found. Ask Claude to set it up.");
+});
+// ---------- the take cards ----------
 function show(id, hereTake){
-  const l = D && D.lines.find(x => x.id === id); if (!l) return;
-  current = id; $("hint").style.display = "none"; $("pickLine").value = id;
+  const l = lineOf(id); if (!l) return;
+  current = id; here = hereTake; $("hint").style.display = "none"; $("pickLine").value = id;
+  const ov = OVR[id];
   $("line").innerHTML = `<div><span class="n">Line ${l.num}</span><span class="who">${esc(l.who)}, ${l.takes.length} takes</span></div>
     <div class="text">${esc(l.text)}</div>${l.check.length ? `<div class="check">Needs your ear: ${esc(l.check.join(", "))}</div>` : ""}`;
   $("takes").innerHTML = l.takes.map((t, i) => {
+    const chosen = ov && ov.take === t.take && ov.src === t.src;
     const pics = Object.keys(t.thumbs || {}).sort().map(c => t.thumbs[c] ?
       `<div><img src="file://${encodeURI(t.thumbs[c])}"><span>${c} camera</span></div>` : "").join("") || '<div class="nopic">sound only</div>';
     const tags = [t.picked ? '<span class="t-pick">In your rough cut</span>' : "",
-                  t.feed ? '<span class="t-bad">Cameraman reading it (skip)</span>' : "",
+                  chosen && !t.picked ? '<span class="t-use">Your choice, goes in on the next rebuild</span>' : "",
+                  t.part_feed ? `<span class="t-bad">Cameraman reads part of it: "${esc(t.part_feed)}" (skip)</span>`
+                    : t.feed ? '<span class="t-bad">Cameraman reading it (skip)</span>' : "",
                   t.wind ? '<span class="t-warn">Windy</span>' : "",
                   ...["A", "B"].filter(c => !t.cams.includes(c)).map(c => `<span class="t-muted">No ${c} camera</span>`)].join("");
-    return `<div class="take${t.picked ? " picked" : ""}${t.feed ? " feed" : ""}${hereTake === t.take ? " here" : ""}">
+    const use = t.picked && !ov ? "" : `<button class="use" data-i="${i}">${chosen ? "Undo my choice" : "Use this take"}</button>`;
+    return `<div class="take${t.picked ? " picked" : ""}${chosen ? " chosen" : ""}${t.feed ? " feed" : ""}${hereTake === t.take ? " here" : ""}">
       <div class="pics">${pics}</div>
-      <div class="head"><b>Take ${t.take} of ${t.of}</b><button class="go" data-i="${i}">Show in scrub</button></div>
+      <div class="head"><b>Take ${t.take} of ${t.of}</b><button class="fl" data-i="${i}" title="Flag this take">Flag</button>${use}<button class="go" data-i="${i}">Show in scrub</button></div>
       <div class="tags">${tags}</div><div class="said">"${esc(t.text)}"</div></div>`;
   }).join("");
 }
@@ -109,40 +245,38 @@ function jumpJS(seqName, sec){
   return `(function(){var q=null;for(var i=0;i<app.project.sequences.numSequences;i++)if(app.project.sequences[i].name==${JSON.stringify(seqName)})q=app.project.sequences[i];
     if(!q)return "missing";app.project.openSequence(q.sequenceID);q.setPlayerPosition("${ticks}");return "ok";})()`;
 }
-$("takes").addEventListener("click", async e => {
-  const b = e.target.closest("button.go"); if (!b) return;
-  const l = D.lines.find(x => x.id === current), t = l.takes[+b.dataset.i];
-  const r = await ev(jumpJS(D.scrub_seq, t.scrub_at + 0.05));
-  status(r === "ok" ? `Scrub: Line ${l.num}, take ${t.take}` : "Couldn't find the scrub sequence");
-});
 $("back").addEventListener("click", async () => {
-  const l = D && D.lines.find(x => x.id === current);
+  const l = D && lineOf(current);
   const r = await ev(jumpJS(D.rc_seq, l && l.rc_at != null ? l.rc_at + 0.05 : 0));
   status(r === "ok" ? "Back in the rough cut" : "Couldn't find the rough cut sequence");
 });
-$("attn").addEventListener("click", () => { const L = $("attnList"); L.style.display = L.style.display === "none" ? "block" : "none"; });
-$("attnList").addEventListener("click", async e => {   // tap a line: show its takes and jump to it in the rough cut
-  const it = e.target.closest("[data-id]"); if (!it) return;
-  const l = D.lines.find(x => x.id === it.dataset.id); show(l.id, null);
-  if (l.rc_at != null) { const r = await ev(jumpJS(D.rc_seq, l.rc_at + 0.05)); status(r === "ok" ? `Rough cut: Line ${l.num}` : "Couldn't find the rough cut"); }
-});
 $("reload").addEventListener("click", () => { load(); status("Reloaded"); });
 $("pickLine").addEventListener("change", e => e.target.value && show(e.target.value, null));
-// follow Premiere: the selected clip (or the playhead) in the rough cut or scrub picks the line shown here
-const SEL = `(function(){var q=app.project.activeSequence;if(!q)return "";var s=q.getSelection(),t=-1;
-  for(var i=0;i<s.length;i++)if(s[i].start){t=s[i].start.seconds+0.05;break;}
-  if(t<0)t=q.getPlayerPosition().seconds;return q.name+"|"+t;})()`;
+// follow Premiere: the selected clip (or the playhead) picks the line shown here. The sound clip's FILE names the
+// take, so a take you dragged from the scrub into the rough cut by hand is still recognised after you move things.
+const SEL = `(function(){var q=app.project.activeSequence;if(!q)return "";var s=q.getSelection(),t=-1,nm="";
+  for(var i=0;i<s.length;i++)if(s[i].start){if(t<0)t=s[i].start.seconds+0.05;if(s[i].mediaType=="Audio"&&s[i].projectItem&&!nm)nm=s[i].projectItem.name;}
+  if(t<0)t=q.getPlayerPosition().seconds;
+  if(!nm){var c=q.audioTracks[0].clips;for(var k=0;k<c.numItems;k++)if(c[k].start.seconds<=t&&t<c[k].end.seconds&&c[k].projectItem){nm=c[k].projectItem.name;break;}}
+  return q.name+"|"+t+"|"+nm;})()`;
+function whereIs(seq, t, nm){
+  const f = D.files && D.files[nm]; if (f) return { line: f[0], take: f[1] };
+  if (seq === D.rc_seq) { const l = D.lines.find(x => x.rc_at != null && x.rc_at <= t && t < x.rc_at + x.rc_dur); return l ? { line: l.id, take: null } : null; }
+  if (seq === D.scrub_seq) for (const l of D.lines) { const tk = l.takes.find(x => x.scrub_at <= t && t < x.scrub_at + x.dur); if (tk) return { line: l.id, take: tk.take }; }
+  return null;
+}
 async function poll(){
   if (D) {
-    const r = await ev(SEL); const [seq, ts] = String(r).split("|"); const t = parseFloat(ts);
-    const key = seq + "|" + (isNaN(t) ? "" : t.toFixed(1));
+    if (++tick % 4 === 0) {   // a rebuild rewrote the data: reload by itself
+      const s = await ev(`(function(){var f=new File("~/.shown/takefinder.json");return f.exists?String(f.modified.getTime()):"";})()`);
+      if (s && stamp && s !== stamp) { await load(); status("Rough cut rebuilt. Panel updated."); }
+    }
+    const r = await ev(SEL); const [seq, ts, nm] = String(r).split("|"); const t = parseFloat(ts);
+    const key = seq + "|" + (isNaN(t) ? "" : t.toFixed(1)) + "|" + nm;
     if (key !== lastKey && !isNaN(t)) {
       lastKey = key;
-      if (seq === D.rc_seq) { const l = D.lines.find(x => x.rc_at != null && x.rc_at <= t && t < x.rc_at + x.rc_dur); if (l && l.id !== current) show(l.id, null); }
-      else if (seq === D.scrub_seq) {
-        for (const l of D.lines) { const tk = l.takes.find(x => x.scrub_at <= t && t < x.scrub_at + x.dur);
-          if (tk) { if (l.id !== current || show.here !== tk.take) { show.here = tk.take; show(l.id, tk.take); } break; } }
-      }
+      const w = whereIs(seq, t, nm);
+      if (w && (w.line !== current || w.take !== here)) show(w.line, w.take);
     }
   }
   setTimeout(poll, 800);

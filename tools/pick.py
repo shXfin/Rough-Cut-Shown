@@ -26,6 +26,11 @@ def rate(t, line_rms):
     return round(s, 1)
 lines = {}
 for t in T: lines.setdefault(t["line"], []).append(t)
+# the editor's choice wins: "Use this take" in the Take Finder panel, or a scrub take dragged into the rough cut by
+# hand (learn_swaps.py) lands in overrides.json next to takes.json as {"L07": {"take": 4, "src": "MixPre-013.WAV"}}
+import os
+_ov = os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), "overrides.json")
+OVR = json.load(open(_ov)) if os.path.exists(_ov) else {}
 for L, ts in lines.items():
     m = st.median(t["rms"] for t in ts)
     for t in ts: t["rank"] = rate(t, m)
@@ -34,6 +39,9 @@ for L, ts in lines.items():
     for t in ts:
         if m and t["rms"] < 0.25 * m: t["rank"] -= 1000; t["no_voice"] = True
         if t.get("off_mic"): t["rank"] -= 1000   # stumble.py: someone off-mic (cameraman feeding the line) is never a pick
+        if t.get("part_feed"): t["rank"] -= 1000   # stumble.py: the cameraman reads PART of the line inside the take (Notch L07 T2)
+        o = OVR.get(L)
+        if o and t["take"] == o["take"] and t["src"] == o["src"]: t["rank"] += 100000; t["override"] = "editor"
     ts.sort(key=lambda t: -t["rank"])
 
 # Keep a running moment in one take. Picking each line's best take on its own stitched Wajo's hook from

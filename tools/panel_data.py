@@ -4,8 +4,20 @@ import json, os, subprocess, sys
 W = os.path.abspath(sys.argv[1]); CLIENT = sys.argv[2] if len(sys.argv) > 2 else "Project"
 TH = os.path.join(W, "finder", "thumbs"); os.makedirs(TH, exist_ok=True)
 LINES = {l["line"]: l for l in json.load(open(os.path.join(W, "lines.json")))}
-SCRUB = json.load(open(os.path.join(W, os.environ.get("SCRUB_REPORT", "notch_SCRUB_work.takes.json"))))
+SCRUB = json.load(open(os.path.join(W, os.environ.get("SCRUB_REPORT", "notch_SCRUB_grid.takes.json"))))
+# sound checks come straight from takes.json, so a newer check shows up without rebuilding the scrub
+TK = {(t["line"], t["take"], t["src"]): t for t in json.load(open(os.path.join(W, "takes.json")))}
 RC = {r["line"]: r for r in json.load(open(os.path.join(W, os.environ.get("RC_REPORT", "notch_RC_clean.takes.json"))))}
+import re
+FPS = 24000 / 1001
+def pieces(xml, report):   # audio piece file name -> (line, take): lets the panel name any clip, wherever you move it
+    out = {}
+    if not os.path.exists(xml): return out
+    for cid, name, st in re.findall(r'<clipitem id="(a[^"]*)"><name>([^<]+\.wav)</name>.*?<start>(\d+)</start>', open(xml).read()):
+        at = int(st) / FPS
+        r = next((x for x in report if abs(x["at"] - at) < 0.06), None)
+        if r and name not in out: out[name] = [r["line"], r["take"]]
+    return out
 def thumb(path, sec, name):
     out = os.path.join(TH, name)
     if not os.path.exists(out):
@@ -18,7 +30,8 @@ for L, ln in LINES.items():
     for r in (x for x in SCRUB if x["line"] == L):
         p = RC.get(L)
         takes.append(dict(take=r["take"], of=r["of"], scrub_at=r["at"], dur=r["dur"], text=r.get("text", ""),
-                          feed=r.get("feed", False), wind=(r.get("wind") or -99) > 12, cams=r.get("cams", ""), src=r["src"],
+                          feed=bool(r.get("feed") or TK.get((L, r["take"], r["src"]), {}).get("part_feed")),
+                          part_feed=TK.get((L, r["take"], r["src"]), {}).get("part_feed", ""), wind=(r.get("wind") or -99) > 12, cams=r.get("cams", ""), src=r["src"],
                           picked=bool(p and p["take"] == r["take"] and p["src"] == r["src"]),
                           thumbs={c: thumb(pth, s, f"{L}_{r['take']}_{c}.jpg") for c, (pth, s) in r.get("frames", {}).items()}))
     if not takes: continue
@@ -28,6 +41,14 @@ for L, ln in LINES.items():
                       takes=sorted(takes, key=lambda t: not t["picked"])))
 cfg = os.path.expanduser("~/.shown"); os.makedirs(cfg, exist_ok=True)
 data = dict(client=CLIENT, rc_seq=os.environ.get("RC_SEQ", f"{CLIENT.upper()} REVIEW 1 - Rough cut (picked takes)"),
-            scrub_seq=os.environ.get("SCRUB_SEQ", f"{CLIENT.upper()} REVIEW 2 - Scrub (every take, A and B side by side)"), lines=lines)
+            scrub_seq=os.environ.get("SCRUB_SEQ", f"{CLIENT.upper()} REVIEW 2 - Scrub (every take, A and B side by side)"), lines=lines,
+            work=W, built=__import__("time").strftime("%H:%M"),
+            files={**pieces(os.path.join(W, os.environ.get("SCRUB_XML", "notch_SCRUB_grid.xml")), SCRUB),
+                   **pieces(os.path.join(W, os.environ.get("RC_XML", "notch_RC_clean.xml")), list(RC.values()))})
 json.dump(data, open(os.path.join(cfg, "takefinder.json"), "w"), indent=1)
-print(f"Take Finder data: {len(lines)} lines -> ~/.shown/takefinder.json")
+print(f"Take Finder data: {len(lines)} lines, {len(data['files'])} named pieces -> ~/.shown/takefinder.json")
+# the panel's "Rebuild rough cut" button opens this in Terminal (Premiere can open a file, not run a script)
+cmd = os.path.join(W, "Rebuild rough cut.command")
+open(cmd, "w").write(f'#!/bin/bash\n"{os.path.join(os.path.dirname(os.path.abspath(__file__)), "rebuild_rc.sh")}" "{W}" "{CLIENT}"\n'
+                     'echo; read -n 1 -p "Press any key to close this window"\n')
+os.chmod(cmd, 0o755)

@@ -80,3 +80,8 @@ Newest first. Each line: what changed · why · how we know it worked.
 - Markers carry real take numbers, file positions (recorder / A / B) and the scrub timecode; needs_your_ear.txt
   lists lines a person should hear (wind gust, dragged word, tightened pause, reworded).
 - Wind measured on the worst half second per take; 0.4 s kept after each line's last word.
+
+## 2026-11-05 (Notch, from Shafin's review)
+- stumble.py: part feeds (cameraman reading half the line inside a take, word-level level check). pick.py skips them.
+- Take Finder v6: attention ticks, flags with notes + copy list, "Use this take" + one-button rebuild, clips named by
+  file so hand swaps are understood. learn_swaps.py, rebuild_rc.sh, overrides.json, ppro_swap BACKUP=1.

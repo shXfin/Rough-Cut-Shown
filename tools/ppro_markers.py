@@ -8,7 +8,7 @@ import json, os, subprocess, sys
 W, SEQ = os.path.abspath(sys.argv[1]), sys.argv[2]
 BR = os.path.expanduser("~/.claude-adobe-bridge/bin/adobe-bridge")
 LINES = {l["line"]: l for l in json.load(open(os.path.join(W, "lines.json")))}
-SC = json.load(open(os.path.join(W, os.environ.get("SCRUB_REPORT", "notch_SCRUB_work.takes.json"))))
+SC = json.load(open(os.path.join(W, os.environ.get("SCRUB_REPORT", "notch_SCRUB_grid.takes.json"))))
 RC = {r["line"]: r for r in json.load(open(os.path.join(W, os.environ.get("RC_REPORT", "notch_RC_clean.takes.json"))))}
 groups, order = {}, []
 for r in SC:

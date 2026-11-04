@@ -212,6 +212,7 @@ for L in order:
         if len(segs) > 1: TIGHT.append((L, len(segs) - 1, round((s1 - s0) - sum(b - a for a, b in segs), 2)))
         flag = "" if tk.get("flag") == "green" else ", reworded or rough"
         if tk.get("off_mic"): flag = ", CAMERAMAN READING IT (skip)"
+        elif tk.get("part_feed"): flag = f', CAMERAMAN READS PART ("{tk["part_feed"]}")'
         cams = "+".join(c for c, _ in CAMS if c in have) or "sound only"
         miss = [c for c, _ in CAMS if c not in cams.split("+")]
         flag += "".join(f", no {c} camera" for c in miss)   # a missing camera is flagged on the timeline, never silent
@@ -228,6 +229,7 @@ for L in order:
             if max((w["end"] - w["start"] for w in tk.get("words", []) if len(w["w"]) < 12), default=0) > 0.9: why.append("dragged word")
             if len(segs) > 1: why.append("pause tightened")
             if tk.get("flag") != "green": why.append("reworded")
+            if tk.get("part_feed"): why.append("cameraman reads part of it")   # only if you chose it in the Take Finder
             sc = SCRUB_AT.get((L, tnum))
             if why: NEEDS.append((t / FPS, L, tnum, tof, ", ".join(why), sc))
             where += f" | in the scrub at {tc(sc)}" if sc is not None else ""
@@ -239,7 +241,8 @@ for L in order:
         mid = (tk["start"] + tk["end"]) / 2 - s0   # a frame from the middle of the take, per camera, for the take finder
         report.append(dict(line=L, take=tnum, of=tof, src=tk["src"], at=round(t / FPS, 2), dur=round(length / FPS, 2), cams=cams,
                            frames={c: [pth, round(at + mid, 2)] for c, (pth, at) in have.items()}, text=tk.get("text", ""),
-                           feed=bool(tk.get("off_mic")), wind=tk.get("wind_db"), check=why))
+                           feed=bool(tk.get("off_mic") or tk.get("part_feed")), part_feed=tk.get("part_feed", ""),
+                           start=tk["start"], wind=tk.get("wind_db"), check=why))
         t += length + fr(GAP_TAKE if k < len(ts) else GAP_LINE); n += 1
 
 tone = ""

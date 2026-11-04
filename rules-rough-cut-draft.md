@@ -193,3 +193,24 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - The Take Finder panel has a "Needs your attention (N)" button: tap it for the list of lines to check; tapping a
   line shows its takes and jumps to it in the rough cut.
 - Markers are not burned into an exported video. For a Frame.io review, burn the line/take text in.
+
+## Part feeds, flags and swaps from the panel (Notch, 2026-11-05)
+- The cameraman can read only HALF a line inside a take the founder starts (Notch L07 take 2: founder says "Six weeks
+  ago, we connected Notch to Scentless", cameraman says "A brand that was performing quite poorly"). The whole-take
+  level check missed it. stumble.py now checks word by word: 3+ words in a row 15 dB under the take's own loud words
+  = `part_feed`. pick.py never picks it; the panel shows "Cameraman reads part of it: ..." in red.
+- Whisper with the script as a prompt writes the script, not what was said. Any doubt about a word: re-listen
+  WITHOUT the prompt (script_check.py already does).
+- Take Finder v6:
+  - Ticks on "Needs your attention", saved in ~/.shown/state.json.
+  - "Flag this spot" (playhead or selected clip) and "Flag" on any take, with a note. "My flags" list with ticks,
+    tap to jump, "Copy open flags for Claude". Saved in ~/.shown/flags.json, so "check my flags" works too.
+  - "Use this take" queues a swap in <work>/overrides.json; "Rebuild rough cut" opens <work>/Rebuild rough cut.command
+    (tools/rebuild_rc.sh): learn hand swaps, re-pick (your choices win), build, script check, into Premiere, scrub
+    tags, panel data. The panel reloads by itself.
+  - The old rough cut is never deleted on a panel rebuild: it waits in Sequences/Old as
+    "... (before your last swap)" (one copy, replaced each time), so hand trims in it can be copied back.
+  - Hand swaps count: every audio piece file is named in takefinder.json, so a scrub take dragged into the rough cut
+    is recognised by the panel (by file, not by time) and learn_swaps.py keeps it on the next rebuild.
+  - A rebuild redoes the whole rough cut sequence: hand trims and extra edits in it don't carry over (they stay in
+    the backup). Make take choices first, fine edits after.

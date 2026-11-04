@@ -36,6 +36,23 @@ by_src = {}
 for t in takes: by_src.setdefault(t["src"], []).append(t["lav_db"])
 for t in takes:
     t["off_mic"] = t["lav_db"] < statistics.median(by_src[t["src"]]) - OFFMIC_DB
+# part feed: the cameraman can read only HALF the line inside a take the founder starts (Notch L07 T2: the founder says
+# "Six weeks ago, we connected Notch to Scentless", the cameraman reads "A brand that was performing quite poorly").
+# The whole-take level still looks fine, so check word by word: a run of 3+ words that sits
+# PARTFEED_DB under the take's own loud words was said off the mics.
+PARTFEED_DB = 15
+for t in takes:
+    e = env(t["src"], t.get("lav_ch", 0)); run, runs = [], []
+    for w in t["words"]:
+        seg = e[int(w["start"] / HOP):int(w["end"] / HOP) + 1]
+        quiet = len(seg) and float(np.percentile(seg, 90)) < t["lav_db"] - PARTFEED_DB
+        if quiet: run.append(w)
+        else:
+            if run: runs.append(run)
+            run = []
+    if run: runs.append(run)
+    runs = [r for r in runs if len(r) >= 3]   # single soft first words ("To", "So") are just the founder easing in
+    t["part_feed"] = " / ".join(" ".join(w["w"].strip() for w in r) for r in runs)
 # wind: low rumble (under 150 Hz) against the voice band (300 Hz-4 kHz) on the speaker's lav. Outdoors a gust
 # makes a take muddy even after the high-pass ("To prove it" in Notch L03). pick.py prefers the calmer take.
 pcm = {}
@@ -54,6 +71,7 @@ for t in takes:   # the WORST half second, not the average: one gust over "To pr
         if hi > 0: worst = max(worst, 10 * np.log10(lo / hi + 1e-12))
     t["wind_db"] = round(float(worst), 1)
 json.dump(takes, open(P, "w"), indent=1)
+print("part feeds (cameraman inside a take):", " ".join(f'{t["line"]}T{t["take"]}' for t in takes if t["part_feed"]))
 print("off-mic takes (line feeds):", " ".join(f'{t["line"]}T{t["take"]}' for t in takes if t["off_mic"]))
 for t in takes:
     if t["line"] in sys.argv[2:]: print(t["line"], t["take"], t["src"], t["start"], "unworded", t["unworded"])

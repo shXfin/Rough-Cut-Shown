@@ -4,7 +4,10 @@
 # name in THAT bin path, rename the new one and move it there. If the import fails, the old one is kept.
 # Bins are found by full path from the project root ("Notch/Sequences/Takes by line"), never by name alone.
 # Also: loose footage from the import goes to <project>/Footage, A cam proxies get square pixels.
+# BACKUP=1 (rebuilds from the Take Finder): the old sequence isn't deleted but kept once in <project>/Sequences/Old
+# as "<name> (before your last swap)", so hand edits made in it are never lost.
 import json, subprocess, sys, os
+BACKUP = os.environ.get("BACKUP") == "1"
 BR = os.path.expanduser("~/.claude-adobe-bridge/bin/adobe-bridge")
 def js(code):
     o = subprocess.run([BR, "eval", "ppro", code], capture_output=True, text=True, timeout=900)
@@ -18,14 +21,16 @@ args = sys.argv[1:]
 for k in range(0, len(args), 3):
     bin_, name, xml = args[k], args[k+1], os.path.abspath(args[k+2])
     top = bin_.split("/")[0]
-    r = js(HELP + f"""
+    r = js(HELP + f"var BK={'true' if BACKUP else 'false'}, BKN={json.dumps(name + ' (before your last swap)')};" + f"""
 var before=ids(); app.project.importFiles([{json.dumps(xml)}],true,app.project.rootItem,false);
 var nw=null; for(var i=0;i<app.project.sequences.numSequences;i++){{var q=app.project.sequences[i]; if(!before[q.sequenceID]) nw=q;}}
 if(!nw) 'FAILED: import made no sequence, old one kept';
 else {{ var clips=0; for(var t=0;t<nw.videoTracks.numTracks;t++) clips+=nw.videoTracks[t].clips.numItems;
   if(!clips) 'FAILED: new sequence is empty, old one kept';
   else {{ var dest=binAt({json.dumps(bin_)}); var gone=0;
-    for(var i=app.project.sequences.numSequences-1;i>=0;i--){{var q=app.project.sequences[i]; if(q.sequenceID!=nw.sequenceID&&q.name=={json.dumps(name)}&&q.projectItem.treePath.indexOf(dest.treePath+'\\\\')==0){{app.project.deleteSequence(q); gone++;}}}}
+    if(BK) for(var z=app.project.sequences.numSequences-1;z>=0;z--){{var y=app.project.sequences[z]; if(y.name==BKN) app.project.deleteSequence(y);}}
+    for(var i=app.project.sequences.numSequences-1;i>=0;i--){{var q=app.project.sequences[i]; if(q.sequenceID!=nw.sequenceID&&q.name=={json.dumps(name)}&&q.projectItem.treePath.indexOf(dest.treePath+'\\\\')==0){{ if(BK){{ var ob=binAt({json.dumps(top + '/Sequences/Old')});
+        q.name=BKN; q.projectItem.moveBin(ob); }} else app.project.deleteSequence(q); gone++;}}}}
     nw.name={json.dumps(name)}; nw.projectItem.moveBin(dest);
     var fb=binAt({json.dumps(top + '/Footage')}), r=app.project.rootItem, m=[];
     for(var i=0;i<r.children.numItems;i++){{var c=r.children[i]; if(c.type!=2&&!c.isSequence()) m.push(c);}}
