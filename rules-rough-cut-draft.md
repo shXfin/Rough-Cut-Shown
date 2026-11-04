@@ -270,3 +270,6 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   The proxy cut is never touched. Check frames side by side (A cam, B cam, a punch-in) before handing it over.
 - XML drops some audio effects and Custom Fades: list them for the editor (Paste Attributes brings them back).
 - Grade only on the 4K copy, after the cut is final.
+- Never link Premiere to originals on a cloud mount (Aspect's "Home Project" streams through 127.0.0.1): Premiere
+  reads them in the background (audio conform, thumbnails) even with proxies on, and a 16 GB Mac swaps until every
+  sequence stutters. Copy only the used ranges + handles to a local drive first (Notch: 24 GB instead of 167 GB).
