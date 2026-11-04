@@ -178,6 +178,7 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - Click any clip in the rough cut or scrub: the panel shows that line and every take (A/B frames, "In your rough
   cut", "Cameraman reading it (skip)", "Windy", "No B camera"). "Show in scrub" jumps there; "Back to rough cut" returns.
 - Labels are plain words: "Line 10, take 4 of 6, Founder 1, Demo 1". Never codes like L10, never dot separators.
-- Multicam review: Premiere can't export the multicam monitor and Frame.io can't switch angles, so we build
+- The scrub IS the multicam (Shafin: one scrub, eagle eye on everything). Premiere can't export the multicam monitor
+  and Frame.io can't switch angles, so the scrub is built
   `REVIEW 3 - Scrub multicam` with every camera on (GRID=1); `ppro_grid.py` tiles A left, B right, one sound track.
   No paid grid plugin needed.

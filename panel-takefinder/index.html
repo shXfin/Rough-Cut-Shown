@@ -48,16 +48,17 @@ select{width:100%;margin-top:8px;background:#1b1b1b;color:var(--ink);border:1px 
 <div id="hint">Click any clip in the rough cut or the scrub. Its other takes show up here.</div>
 <div id="takes"></div>
 <script>
-const fs = require("fs"), os = require("os"), path = require("path");
 const cep = window.__adobe_cep__;
-const DATA = path.join(os.homedir(), ".shown", "takefinder.json");
+// the data file is read through Premiere's own scripting (File): Node's require isn't available in every Premiere
+const READ = `(function(){var f=new File("~/.shown/takefinder.json");if(!f.exists)return "";f.encoding="UTF-8";f.open("r");var s=f.read();f.close();return s;})()`;
 let D = null, current = null, lastKey = "";
 const $ = id => document.getElementById(id);
 const ev = src => new Promise(r => cep.evalScript(src, r));
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function status(m){ $("status").textContent = m; clearTimeout(status.t); status.t = setTimeout(() => $("status").textContent = "", 4000); }
-function load(){
-  try { D = JSON.parse(fs.readFileSync(DATA, "utf8")); } catch (e) { $("hint").textContent = "No take data yet. Ask Claude to build the scrub first."; return; }
+async function load(){
+  const raw = await ev(READ);
+  try { D = JSON.parse(raw); } catch (e) { $("hint").textContent = "No take data yet. Ask Claude to build the scrub first."; return; }
   $("pickLine").innerHTML = '<option value="">Browse a line...</option>' + D.lines.map(l =>
     `<option value="${l.id}">Line ${l.num}: ${esc(l.text.slice(0, 60))}</option>`).join("");
   if (current) show(current, null);

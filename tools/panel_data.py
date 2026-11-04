@@ -28,6 +28,6 @@ for L, ln in LINES.items():
                       takes=sorted(takes, key=lambda t: not t["picked"])))
 cfg = os.path.expanduser("~/.shown"); os.makedirs(cfg, exist_ok=True)
 data = dict(client=CLIENT, rc_seq=os.environ.get("RC_SEQ", f"{CLIENT.upper()} REVIEW 1 - Rough cut (picked takes)"),
-            scrub_seq=os.environ.get("SCRUB_SEQ", f"{CLIENT.upper()} REVIEW 2 - Scrub (every take)"), lines=lines)
+            scrub_seq=os.environ.get("SCRUB_SEQ", f"{CLIENT.upper()} REVIEW 2 - Scrub (every take, A and B side by side)"), lines=lines)
 json.dump(data, open(os.path.join(cfg, "takefinder.json"), "w"), indent=1)
 print(f"Take Finder data: {len(lines)} lines -> ~/.shown/takefinder.json")
