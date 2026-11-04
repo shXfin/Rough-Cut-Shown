@@ -10,6 +10,7 @@ RC = len(sys.argv) > 3 and sys.argv[3] == "--rough-cut"   # rough cut: only the 
 J = lambda n: json.load(open(os.path.join(W, n)))
 LINES = {l["line"]: l for l in J("lines.json")}
 TAKES = J("takes.json")
+GRID = os.environ.get("GRID") == "1"   # multicam review: every camera on (ppro_grid.py then tiles them side by side)
 SRC = {os.path.basename(p): p for p in J("sources.json")}
 FPS = 24000/1001; fr = lambda s: int(round(s * FPS))
 GAP_TAKE, GAP_LINE, HANDLE = 1.0, 3.0, 0.5
@@ -197,7 +198,7 @@ for L in order:
             sl = fr(s0 + a1) - fr(s0 + a0); cid = f"{n}" if not j else f"{n}_{j}"
             for cam, (path, at) in have.items():
                 if cam == CAMS[0][0] and MAIN_PATH is None: MAIN_PATH = path
-                v[cam].append(clip(f"v{cam}{cid}", path, "video", t, fr(at + a0), sl, enabled=(cam == look[0]), punch=look[1] if cam == look[0] else 1.0))
+                v[cam].append(clip(f"v{cam}{cid}", path, "video", t, fr(at + a0), sl, enabled=GRID or (cam == look[0]), punch=look[1] if cam == look[0] else 1.0))
                 on = on or cam
             first, last = j == 0, j == len(segs) - 1
             fi = (0 if RC and L in JOIN_IN else FADE) if first else 0.042   # 1 frame at a tightened pause: no click
@@ -207,15 +208,15 @@ for L in order:
             t += sl; length += sl
         t = t_start
         if len(segs) > 1: TIGHT.append((L, len(segs) - 1, round((s1 - s0) - sum(b - a for a, b in segs), 2)))
-        flag = "" if tk.get("flag") == "green" else " · reworded or rough"
-        if tk.get("off_mic"): flag = " · LINE FEED (cameraman reading it, off-mic)"
+        flag = "" if tk.get("flag") == "green" else ", reworded or rough"
+        if tk.get("off_mic"): flag = ", CAMERAMAN READING IT (skip)"
         cams = "+".join(c for c, _ in CAMS if c in have) or "sound only"
         miss = [c for c, _ in CAMS if c not in cams.split("+")]
-        flag += "".join(f" · NO {c} CAM" for c in miss)   # a missing camera is flagged on the timeline, never silent
+        flag += "".join(f", no {c} camera" for c in miss)   # a missing camera is flagged on the timeline, never silent
         tnum, tof = tk.get("take", k), N_TAKES.get(L, len(ts))   # the take's real number, same as in the scrub
         mm = lambda x: f"{int(x // 60):02d}:{x % 60:04.1f}"
-        where = f"Recorder {tk['src']} @ {mm(tk['start'])}" + "".join(
-            f" | {c} cam {os.path.basename(pth).replace('_proxy.mp4', '')} @ {mm(at + (tk['start'] - s0))}" for c, (pth, at) in have.items())
+        where = f"Sound: {tk['src']} at {mm(tk['start'])}" + "".join(
+            f" | {c} camera: {os.path.basename(pth).replace('_proxy.mp4', '')} at {mm(at + (tk['start'] - s0))}" for c, (pth, at) in have.items())
         why = []
         if RC:   # anything a person should hear before this ships: listed, marked CHECK, with where the other takes are
             pk = PICKS.get(L, {})
@@ -227,9 +228,10 @@ for L in order:
             if tk.get("flag") != "green": why.append("reworded")
             sc = SCRUB_AT.get((L, tnum))
             if why: NEEDS.append((t / FPS, L, tnum, tof, ", ".join(why), sc))
-            where += f" | in scrub @ {tc(sc)}" if sc is not None else ""
-        name = (f'{"CHECK: " + ", ".join(why) + " · " if why else ""}{SECTION.get(ln["beat"], ln["beat"].title())} · {L} · '
-                f'Take {tnum} of {tof} · {WHO.get(ln.get("who"), "")}{flag}')
+            where += f" | in the scrub at {tc(sc)}" if sc is not None else ""
+        # plain words for editors: "Line 10, take 4 of 6" (no codes like L10, no dot separators)
+        name = (f'{"CHECK (" + ", ".join(why) + "): " if why else ""}Line {int(L[1:])}, take {tnum} of {tof}, '
+                f'{WHO.get(ln.get("who"), "")}, {SECTION.get(ln["beat"], ln["beat"].title())}{flag}')
         color = '<color><alpha>0</alpha><red>255</red><green>0</green><blue>0</blue></color>' if miss or why else ""
         markers.append(f'<marker>{color}<name>{escape(name)}</name><comment>{escape(tk.get("text", ""))} || {escape(where)}</comment><in>{t}</in><out>-1</out></marker>')
         mid = (tk["start"] + tk["end"]) / 2 - s0   # a frame from the middle of the take, per camera, for the take finder
@@ -288,7 +290,7 @@ for r in report:
 if NEEDS:   # the human list: every line a person should hear, with the scrub timecode of its other takes
     with open(OUT.replace(".xml", ".needs_your_ear.txt"), "w") as fh:
         for at_, L_, n_, of_, why_, sc_ in NEEDS:
-            fh.write(f"{tc(at_)}  {L_} take {n_} of {of_}: {why_}.  Other takes: scrub @ {tc(sc_)} or 'Takes by line/{L_}'\n")
+            fh.write(f"{tc(at_)}  Line {int(L_[1:])}, take {n_} of {of_}: {why_}. Other takes: scrub at {tc(sc_)}, or the Take Finder panel\n")
     print(f"NEEDS YOUR EAR: {len(NEEDS)} lines, list in {os.path.basename(OUT.replace('.xml', '.needs_your_ear.txt'))}", file=sys.stderr)
 for L_, k_, cut_ in TIGHT: print(f"tightened {L_}: {k_} pause(s), {cut_} s of thinking removed", file=sys.stderr)
 for c, ls in gaps.items():   # loud, so it reaches the editor: a camera that silently drops out is the worst miss

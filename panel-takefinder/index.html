@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Take Finder</title>
+<style>
+:root{--bg:#232323;--panel:#2c2c2c;--ink:#e8e8e8;--muted:#9a9a9a;--rule:#3a3a3a;--pick:#3fbf86;--bad:#ff6b5c;--warn:#f0a135}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:12px/1.4 -apple-system,system-ui,sans-serif;user-select:none}
+header{position:sticky;top:0;background:var(--bg);padding:10px 10px 8px;border-bottom:1px solid var(--rule);z-index:1}
+.row{display:flex;gap:6px;align-items:center}
+h1{margin:0;font-size:15px;font-weight:800;flex:1}
+button{background:#3a3a3a;color:var(--ink);border:1px solid #4a4a4a;border-radius:4px;padding:5px 9px;font:inherit;cursor:pointer}
+button:hover{background:#464646}
+button.go{background:#2f6b4f;border-color:#3fbf86}
+select{width:100%;margin-top:8px;background:#1b1b1b;color:var(--ink);border:1px solid #4a4a4a;border-radius:4px;padding:5px;font:inherit}
+#line{padding:12px 10px 4px}
+#line .n{font-size:18px;font-weight:800}
+#line .who{color:var(--muted);margin-left:6px}
+#line .text{font-size:13px;font-weight:600;margin-top:4px}
+#line .check{color:var(--bad);font-weight:700;margin-top:4px}
+#hint{color:var(--muted);padding:14px 10px}
+#takes{padding:6px 10px 20px;display:grid;gap:8px}
+.take{background:var(--panel);border:2px solid transparent;border-radius:6px;padding:7px}
+.take.picked{border-color:var(--pick)}
+.take.feed{opacity:.45}
+.take.here{box-shadow:0 0 0 2px #fff inset}
+.pics{display:flex;gap:4px}
+.pics div{flex:1;position:relative}
+.pics img{width:100%;height:64px;object-fit:cover;border-radius:3px;display:block;background:#000}
+.pics span{position:absolute;left:4px;top:2px;font-weight:800;font-size:11px;text-shadow:0 1px 2px #000}
+.nopic{height:64px;display:grid;place-items:center;color:var(--muted);background:#191919;border-radius:3px}
+.head{display:flex;align-items:center;gap:8px;margin-top:6px}
+.head b{font-size:13px;flex:1}
+.tags{margin-top:3px;display:flex;flex-wrap:wrap;gap:2px 10px;font-weight:700}
+.t-pick{color:var(--pick)} .t-bad{color:var(--bad)} .t-warn{color:var(--warn)} .t-muted{color:var(--muted);font-weight:500}
+.said{color:var(--muted);margin-top:3px}
+#status{color:var(--pick);min-height:14px;margin-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <div class="row"><h1>Take Finder</h1><button id="back">Back to rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
+  <select id="pickLine"></select>
+  <div id="status"></div>
+</header>
+<div id="line"></div>
+<div id="hint">Click any clip in the rough cut or the scrub. Its other takes show up here.</div>
+<div id="takes"></div>
+<script>
+const fs = require("fs"), os = require("os"), path = require("path");
+const cep = window.__adobe_cep__;
+const DATA = path.join(os.homedir(), ".shown", "takefinder.json");
+let D = null, current = null, lastKey = "";
+const $ = id => document.getElementById(id);
+const ev = src => new Promise(r => cep.evalScript(src, r));
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function status(m){ $("status").textContent = m; clearTimeout(status.t); status.t = setTimeout(() => $("status").textContent = "", 4000); }
+function load(){
+  try { D = JSON.parse(fs.readFileSync(DATA, "utf8")); } catch (e) { $("hint").textContent = "No take data yet. Ask Claude to build the scrub first."; return; }
+  $("pickLine").innerHTML = '<option value="">Browse a line...</option>' + D.lines.map(l =>
+    `<option value="${l.id}">Line ${l.num}: ${esc(l.text.slice(0, 60))}</option>`).join("");
+  if (current) show(current, null);
+}
+function show(id, hereTake){
+  const l = D && D.lines.find(x => x.id === id); if (!l) return;
+  current = id; $("hint").style.display = "none"; $("pickLine").value = id;
+  $("line").innerHTML = `<div><span class="n">Line ${l.num}</span><span class="who">${esc(l.who)}, ${l.takes.length} takes</span></div>
+    <div class="text">${esc(l.text)}</div>${l.check.length ? `<div class="check">Needs your ear: ${esc(l.check.join(", "))}</div>` : ""}`;
+  $("takes").innerHTML = l.takes.map((t, i) => {
+    const pics = Object.keys(t.thumbs || {}).sort().map(c => t.thumbs[c] ?
+      `<div><img src="file://${encodeURI(t.thumbs[c])}"><span>${c} camera</span></div>` : "").join("") || '<div class="nopic">sound only</div>';
+    const tags = [t.picked ? '<span class="t-pick">In your rough cut</span>' : "",
+                  t.feed ? '<span class="t-bad">Cameraman reading it (skip)</span>' : "",
+                  t.wind ? '<span class="t-warn">Windy</span>' : "",
+                  ...["A", "B"].filter(c => !t.cams.includes(c)).map(c => `<span class="t-muted">No ${c} camera</span>`)].join("");
+    return `<div class="take${t.picked ? " picked" : ""}${t.feed ? " feed" : ""}${hereTake === t.take ? " here" : ""}">
+      <div class="pics">${pics}</div>
+      <div class="head"><b>Take ${t.take} of ${t.of}</b><button class="go" data-i="${i}">Show in scrub</button></div>
+      <div class="tags">${tags}</div><div class="said">"${esc(t.text)}"</div></div>`;
+  }).join("");
+}
+function jumpJS(seqName, sec){
+  const ticks = Math.round(sec * 254016000000);
+  return `(function(){var q=null;for(var i=0;i<app.project.sequences.numSequences;i++)if(app.project.sequences[i].name==${JSON.stringify(seqName)})q=app.project.sequences[i];
+    if(!q)return "missing";app.project.openSequence(q.sequenceID);q.setPlayerPosition("${ticks}");return "ok";})()`;
+}
+$("takes").addEventListener("click", async e => {
+  const b = e.target.closest("button.go"); if (!b) return;
+  const l = D.lines.find(x => x.id === current), t = l.takes[+b.dataset.i];
+  const r = await ev(jumpJS(D.scrub_seq, t.scrub_at + 0.05));
+  status(r === "ok" ? `Scrub: Line ${l.num}, take ${t.take}` : "Couldn't find the scrub sequence");
+});
+$("back").addEventListener("click", async () => {
+  const l = D && D.lines.find(x => x.id === current);
+  const r = await ev(jumpJS(D.rc_seq, l && l.rc_at != null ? l.rc_at + 0.05 : 0));
+  status(r === "ok" ? "Back in the rough cut" : "Couldn't find the rough cut sequence");
+});
+$("reload").addEventListener("click", () => { load(); status("Reloaded"); });
+$("pickLine").addEventListener("change", e => e.target.value && show(e.target.value, null));
+// follow Premiere: the selected clip (or the playhead) in the rough cut or scrub picks the line shown here
+const SEL = `(function(){var q=app.project.activeSequence;if(!q)return "";var s=q.getSelection(),t=-1;
+  for(var i=0;i<s.length;i++)if(s[i].start){t=s[i].start.seconds+0.05;break;}
+  if(t<0)t=q.getPlayerPosition().seconds;return q.name+"|"+t;})()`;
+async function poll(){
+  if (D) {
+    const r = await ev(SEL); const [seq, ts] = String(r).split("|"); const t = parseFloat(ts);
+    const key = seq + "|" + (isNaN(t) ? "" : t.toFixed(1));
+    if (key !== lastKey && !isNaN(t)) {
+      lastKey = key;
+      if (seq === D.rc_seq) { const l = D.lines.find(x => x.rc_at != null && x.rc_at <= t && t < x.rc_at + x.rc_dur); if (l && l.id !== current) show(l.id, null); }
+      else if (seq === D.scrub_seq) {
+        for (const l of D.lines) { const tk = l.takes.find(x => x.scrub_at <= t && t < x.scrub_at + x.dur);
+          if (tk) { if (l.id !== current || show.here !== tk.take) { show.here = tk.take; show(l.id, tk.take); } break; } }
+      }
+    }
+  }
+  setTimeout(poll, 800);
+}
+load(); poll();
+</script>
+</body>
+</html>
