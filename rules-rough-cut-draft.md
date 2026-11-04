@@ -263,3 +263,10 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - Existing cuts get handles in place: REBAKE (same s0/s1, handles added) + ppro_relink_handles.py, which swaps the
   file and slides every clip using it, in every sequence, by the handle, keyframes included. Tested on a copy first,
   project file backed up first (Notch/backups). Manifests record "pre" (handle before the edit); every tool subtracts it.
+
+## 4K conform for grading (Notch, 2026-11-05)
+- conform_4k.py builds "<cut> 4K (for grading)" FROM the editor's live proxy cut: XML export, proxies -> camera
+  originals, import beside it, then each camera clip copies its Motion from the proxy cut at 1/4 scale (540 -> 2160).
+  The proxy cut is never touched. Check frames side by side (A cam, B cam, a punch-in) before handing it over.
+- XML drops some audio effects and Custom Fades: list them for the editor (Paste Attributes brings them back).
+- Grade only on the 4K copy, after the cut is final.
