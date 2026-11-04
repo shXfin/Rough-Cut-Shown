@@ -249,7 +249,21 @@ if os.environ.get("REBAKE") and BAKE:
             ch_ = best_channel(wav, s0, s1 - s0)[0]
             ns0, _, mi, mo = clean_edges(wav, ch_, tk["start"], tk["end"], s0, s1)
             mi = max(0.0, mi + ns0 - s0)
-        new = bake(wav, s0, s1, 500 + n_, mute_in=mi, mute_out=mo)
+        src_for_bake, b0, b1 = wav, s0, s1
+        if os.environ.get("BLEND") == "1":   # buried lav: blend in the A camera's own mic above 1.5 kHz (blend.py)
+            import blend, numpy as _np
+            ch_b = best_channel(wav, s0, s1 - s0)[0]
+            sh = matcheq.ltas(matcheq.load(wav, s0, s1 - s0, ch_b))
+            deficit = float((EQREF() - sh)[matcheq.C >= 2000].mean()) if sh is not None else 0
+            row = next((r for r in SYNC["A"].get(pc["src"], []) if s0 + r["offset_s"] >= 0 and s1 + r["offset_s"] <= dur(r["ref"])), None)
+            cam = blend.original_of(row["ref"]) if row and deficit > 6 else None
+            if cam:
+                tmpb = os.path.join(VO, f"blend_src_{STAMP}_{n_}.wav")
+                info = blend.blend(wav, ch_b, s0, s1, cam, row["offset_s"], tmpb)
+                if info and info["corr"] >= 0.8:
+                    src_for_bake, b0, b1 = tmpb, 0.0, s1 - s0
+                    print(f"  {name} ({pc['line']}): lav {deficit:.0f} dB dull, blended with {os.path.basename(cam)} (match {info['corr']})")
+        new = bake(src_for_bake, b0, b1, 500 + n_, mute_in=mi, mute_out=mo)
         PIECES[os.path.basename(new)] = pc; done[name] = new
     json.dump(PIECES, open(OUT.replace(".xml", ".pieces.json"), "w"), indent=1)
     json.dump(done, open(os.path.join(W, "rebake_map.json"), "w"), indent=1)

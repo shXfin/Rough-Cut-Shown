@@ -250,3 +250,8 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - No grading until the cut is final and the 4K is conformed.
 - Test every Premiere script change on a CLONE first, and find the clone by name, never by its index in the list
   (an index guess renamed a Wajo sequence; restored from the saved project).
+- Buried lav (Founder 2): blend.py, lav below 1.5 kHz + the A camera ORIGINAL's mic above it, aligned to the sample
+  by cross-correlation (0.92-0.97), level-matched on the voice body (400-1400 Hz). REBAKE with BLEND=1 applies it to
+  pieces more than 6 dB dull. Natural top end instead of boosted, "under water" EQ.
+- A "spike" can be the founder's own voice (a 90 ms squeak on "fatigue", L17, in the original recording): check the
+  raw before processing it; the fix is another take, not a filter.

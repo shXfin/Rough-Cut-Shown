@@ -56,3 +56,26 @@ def _write(raw, out):
     import os
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", raw, "-c:a", "pcm_f32le", out], check=True)
     os.remove(raw)
+def deknock(path, out, jump_db=15.0, max_len=0.2):
+    """A knock, lav bump or tap IN A PAUSE (Notch 1:23:07, L17: 90 ms, 15 dB over the voice, ringing out after): it
+    starts out of quiet, so it is not a word. Taken down to the pause's level, with its ring-out, 3 ms ramps."""
+    x = _read(path); n = int(0.005 * SR); w = len(x) // n
+    if w < 40: return 0
+    pk = 20 * np.log10(np.abs(x[:w * n]).reshape(w, n).max(1) + 1e-9)
+    g = np.zeros(w); i = 20; fixed = 0
+    while i < w:
+        before = np.median(pk[i - 20:i])                       # the 100 ms before
+        if pk[i] - before >= jump_db:
+            j = i
+            while j < w and pk[j] - before >= jump_db - 6 and (j - i) * 0.005 < max_len: j += 1
+            if (j - i) * 0.005 < max_len:                        # short: a knock. Long: a word starting loud, leave it
+                k = j
+                while k < w and pk[k] > before + 3 and (k - j) * 0.005 < 0.25: k += 1   # its ring-out
+                g[i:k] = np.minimum(0, before + 3 - pk[i:k]); fixed += 1; i = k; continue
+            i = j
+        i += 1
+    lin = 10 ** (g / 20); r = int(0.003 * SR)
+    gs = np.convolve(np.repeat(lin, n), np.ones(r) / r, "same"); gs = np.minimum(gs, np.repeat(lin, n))
+    y = x.copy(); y[:len(gs)] *= gs
+    y.astype(np.float32).tofile(out + ".raw"); _write(out + ".raw", out)
+    return fixed
