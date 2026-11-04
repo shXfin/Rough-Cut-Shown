@@ -28,7 +28,7 @@ for f in glob.glob(os.path.join(W, "sync_*_ok.jsonl")):
 aud = [r for r in rows if r[0] == "A" and r[3] in PIECES]
 def sound_at(t):   # (recording file, second in it) playing at timeline second t
     for k, tr, i, n, st, en, a, b in aud:
-        if st <= t < en: p = PIECES[n]; return p["src"], p["s0"] + a + (t - st)
+        if st <= t < en: p = PIECES[n]; return p["src"], p["s0"] - p.get("pre", 0) + a + (t - st)   # pre: the handle before the edit
     return None
 bad = []; ok = 0
 for k, tr, i, n, st, en, a, b in rows:

@@ -61,12 +61,14 @@ for L, cl in sorted(by_line.items()):
     k = max(takes_here, key=lambda k: sum(c[3] - c[2] for c in cl if c[1]["take"] == k))
     mine = [c for c in cl if c[1]["take"] == k]
     pc = mine[0][1]; tol = max(c[4] for c in mine)
-    src_in = pc["s0"] + mine[0][2]; src_out = mine[-1][1]["s0"] + mine[-1][3]
+    src_in = pc["s0"] - pc.get("pre", 0) + mine[0][2]; src_out = mine[-1][1]["s0"] - mine[-1][1].get("pre", 0) + mine[-1][3]   # pre: handle
     built_in, built_out = pc["s0"], mine[-1][1]["s1"]
     p = picks.get(L, {}); swapped = k != p.get("take")
     # a trim = you moved the clip's own in or out point (each piece starts at 0 and runs to its end when built)
     last_len = flen(mine[-1][5])
-    trimmed = mine[0][2] > 0.04 or mine[-1][3] < last_len - 0.04
+    pre0, pre1 = pc.get("pre", 0), mine[-1][1].get("pre", 0)   # with handles the edit starts at `pre`, not 0
+    core_end = pre1 + (mine[-1][1]["s1"] - mine[-1][1]["s0"]) if pre1 else last_len
+    trimmed = abs(mine[0][2] - pre0) > 0.04 or abs(mine[-1][3] - core_end) > 0.04
     if swapped or trimmed:
         e = dict(take=k, src=pc["src"], how="your edit in Premiere")
         if trimmed: e.update(src_in=round(src_in, 3), src_out=round(src_out, 3))

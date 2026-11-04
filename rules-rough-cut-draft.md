@@ -255,3 +255,11 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   pieces more than 6 dB dull. Natural top end instead of boosted, "under water" EQ.
 - A "spike" can be the founder's own voice (a 90 ms squeak on "fatigue", L17, in the original recording): check the
   raw before processing it; the fix is another take, not a filter.
+
+## Handles on every sound piece (Notch, 2026-11-05)
+- Shafin: "if I see anything cut off, I should be able to drag the audio". Every piece file now carries FILE_HANDLE
+  (2 s) of real sound before and after the edit; the clip plays only the edit (in point = the handle). Loudness is
+  measured on the edit only; click/noise mutes apply only inside the edit, the handles stay open.
+- Existing cuts get handles in place: REBAKE (same s0/s1, handles added) + ppro_relink_handles.py, which swaps the
+  file and slides every clip using it, in every sequence, by the handle, keyframes included. Tested on a copy first,
+  project file backed up first (Notch/backups). Manifests record "pre" (handle before the edit); every tool subtracts it.

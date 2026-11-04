@@ -76,24 +76,37 @@ _ref = []
 def EQREF():
     if not _ref: _ref.append(matcheq.project_ref(W, SRC, lambda w, a, d: best_channel(w, a, d)[0]))
     return _ref[0]
-def bake(wav, s0, s1, n, fin=0.012, fout=0.012, mute_in=0.0, mute_out=0.0):
+FILE_HANDLE = float(os.environ.get("FILE_HANDLE", "2.0"))   # seconds of extra sound kept in each piece file, both sides
+# Shafin: "if I see anything cut off, I should be able to drag the audio" - like camera footage, every piece carries
+# handles. The clip in the sequence plays only the edit; dragging its edge out reveals the real sound around it.
+LAST_PRE = [0.0]   # how far into the file the edit starts (s0 - file start), for the clip's in point
+def bake(wav, s0, s1, n, fin=0.012, fout=0.012, mute_in=0.0, mute_out=0.0, handle=None):
+    handle = FILE_HANDLE if handle is None else handle
     os.makedirs(VO, exist_ok=True); out = os.path.join(VO, f"{'rc' if RC else 'take'}_{STAMP}_{n:03d}.wav"); d = s1 - s0
+    a0 = max(0.0, s0 - handle); a1 = min(dur(wav), s1 + handle) if handle else s1; pre = s0 - a0; full = a1 - a0
     ch, lv = best_channel(wav, s0, d); CHAN[n] = (ch + 1, [round(x, 1) for x in lv])
     shape = matcheq.ltas(matcheq.load(wav, s0, d, ch))   # this piece's tone, matched to the project's middle
     af = f"pan=mono|c0=c{ch}," + CLEAN.replace("equalizer=f=250", matcheq.eq_for(shape, EQREF()) + "equalizer=f=250", 1)
     tmp = out + ".tmp.wav"
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{s0:.3f}", "-t", f"{d:.3f}", "-i", wav, "-af", af, "-ar", "48000", "-c:a", "pcm_f32le", tmp], check=True)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{a0:.3f}", "-t", f"{full:.3f}", "-i", wav, "-af", af, "-ar", "48000", "-c:a", "pcm_f32le", tmp], check=True)
     import polish   # gust-only wind cut, then pops/bumps turned down to speech level (hand clip-gain work)
     polish.dewind(tmp, tmp + ".w.wav"); os.replace(tmp + ".w.wav", tmp)
     polish.despike(tmp, tmp + ".s.wav"); os.replace(tmp + ".s.wav", tmp)
-    o = subprocess.run(["ffmpeg", "-hide_banner", "-i", tmp, "-af", "ebur128", "-f", "null", "-"], capture_output=True, text=True).stderr
+    # loudness measured on the EDIT only, so handles never change the level of what plays
+    o = subprocess.run(["ffmpeg", "-hide_banner", "-ss", f"{pre:.3f}", "-t", f"{d:.3f}", "-i", tmp, "-af", "ebur128", "-f", "null", "-"], capture_output=True, text=True).stderr
     I = [l for l in o.splitlines() if l.strip().startswith("I:")]
     gain = TARGET_LUFS - float(I[-1].split()[1]) if I and "-inf" not in I[-1] else 0
     gain = max(-12, min(30, gain)); GAINS.append(gain)   # dialogue levelling, like riding the fader per line
+    mutes = []   # noises found right before the first word / after the last: muted only there, the handles stay open
+    if mute_in > 0.005: mutes.append((pre, pre + mute_in))
+    if mute_out > 0.005: mutes.append((pre + d - mute_out, pre + d))
+    mexpr = ",".join(f"volume=0:enable='between(t,{a:.3f},{b:.3f})'" for a, b in mutes)
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", tmp, "-af",
-                    f"volume={gain:.2f}dB,alimiter=limit=0.79:level=false,afade=t=in:st={mute_in:.3f}:d={max(fin, 0.03 if mute_in else fin):.3f},afade=t=out:st={d-mute_out-max(fout, 0.03 if mute_out else fout):.3f}:d={max(fout, 0.03 if mute_out else fout):.3f},pan=stereo|c0=c0|c1=c0",
+                    f"volume={gain:.2f}dB,alimiter=limit=0.79:level=false," + (mexpr + "," if mexpr else "") +
+                    f"afade=t=in:d={fin},afade=t=out:st={full - fout:.3f}:d={fout},pan=stereo|c0=c0|c1=c0",
                     "-c:a", "pcm_s24le", out], check=True)
     os.remove(tmp)
+    LAST_PRE[0] = pre
     return out
 def cam_for(cam, wav, t0, t1):   # the verified camera clip that covers this take, and where in it
     for r in SYNC[cam].get(wav, []):
@@ -184,14 +197,15 @@ v = {c: [] for c, _ in CAMS}; aud, markers = [], []
 t = 0; n = 0; report = []; MAIN_PATH = None
 JOIN_IN, JOIN_OUT = {}, {}
 TIGHT = []; KEEP_PAUSE = 0.35   # seconds of a long pause that stay: a breath, not a think
-def tighten(piece):
+def tighten(piece, pre=0.0, core=None):
     """Silences over 0.5 s INSIDE the line (the founder thinking mid-sentence) shrink to KEEP_PAUSE.
     Found on the cleaned, levelled piece, so -38 dB is reliably 'not talking'. Edges are left alone."""
-    o = subprocess.run(["ffmpeg", "-hide_banner", "-i", piece, "-af", "silencedetect=n=-38dB:d=0.5", "-f", "null", "-"],
+    core = core or (dur(piece) - pre)   # only the edit, never the handles around it
+    o = subprocess.run(["ffmpeg", "-hide_banner", "-ss", f"{pre:.3f}", "-t", f"{core:.3f}", "-i", piece, "-af", "silencedetect=n=-38dB:d=0.5", "-f", "null", "-"],
                        capture_output=True, text=True).stderr
     st = [float(l.split("silence_start: ")[1]) for l in o.splitlines() if "silence_start" in l]
     en = [float(l.split("silence_end: ")[1].split()[0]) for l in o.splitlines() if "silence_end" in l]
-    d = dur(piece); segs = []; cur = 0.0
+    d = core; segs = []; cur = 0.0
     for a, b in zip(st, en):
         if a < 0.3 or b > d - 0.3: continue                       # lead-in / tail: not inside the line
         cut_in, cut_out = a + KEEP_PAUSE / 2, b - KEEP_PAUSE / 2
@@ -255,16 +269,17 @@ if os.environ.get("REBAKE") and BAKE:
             ch_b = best_channel(wav, s0, s1 - s0)[0]
             sh = matcheq.ltas(matcheq.load(wav, s0, s1 - s0, ch_b))
             deficit = float((EQREF() - sh)[matcheq.C >= 2000].mean()) if sh is not None else 0
-            row = next((r for r in SYNC["A"].get(pc["src"], []) if s0 + r["offset_s"] >= 0 and s1 + r["offset_s"] <= dur(r["ref"])), None)
+            h0, h1 = max(0.0, s0 - FILE_HANDLE), min(dur(wav), s1 + FILE_HANDLE)   # blend the handles too
+            row = next((r for r in SYNC["A"].get(pc["src"], []) if h0 + r["offset_s"] >= 0 and h1 + r["offset_s"] <= dur(r["ref"])), None)
             cam = blend.original_of(row["ref"]) if row and deficit > 6 else None
             if cam:
                 tmpb = os.path.join(VO, f"blend_src_{STAMP}_{n_}.wav")
-                info = blend.blend(wav, ch_b, s0, s1, cam, row["offset_s"], tmpb)
+                info = blend.blend(wav, ch_b, h0, h1, cam, row["offset_s"], tmpb)
                 if info and info["corr"] >= 0.8:
-                    src_for_bake, b0, b1 = tmpb, 0.0, s1 - s0
+                    src_for_bake, b0, b1 = tmpb, s0 - h0, s0 - h0 + (s1 - s0)
                     print(f"  {name} ({pc['line']}): lav {deficit:.0f} dB dull, blended with {os.path.basename(cam)} (match {info['corr']})")
         new = bake(src_for_bake, b0, b1, 500 + n_, mute_in=mi, mute_out=mo)
-        PIECES[os.path.basename(new)] = pc; done[name] = new
+        PIECES[os.path.basename(new)] = dict(pc, pre=LAST_PRE[0]); done[name] = [new, LAST_PRE[0]]
     json.dump(PIECES, open(OUT.replace(".xml", ".pieces.json"), "w"), indent=1)
     json.dump(done, open(os.path.join(W, "rebake_map.json"), "w"), indent=1)
     print(f"re-made {len(done)} pieces"); sys.exit(0)
@@ -314,7 +329,8 @@ for L in order:
             LOOK = look
         piece = bake(wav, s0, s1, n, mute_in=mi, mute_out=mo) if wav and BAKE else None
         if piece: PIECES[os.path.basename(piece)] = dict(line=L, take=tk["take"], src=tk["src"], s0=round(s0, 3), s1=round(s1, 3))
-        segs = tighten(piece) if RC and piece else [(0.0, s1 - s0)]   # long pauses inside the line cut down to a breath
+        PRE = LAST_PRE[0] if piece else 0.0   # the edit starts this far into the piece file (its handle)
+        segs = tighten(piece, PRE, s1 - s0) if RC and piece else [(0.0, s1 - s0)]   # long pauses inside the line cut down to a breath
         t_start = t; length = 0
         for j, (a0, a1) in enumerate(segs):
             if j:   # a tightened pause is a cut inside the line: hide it like a take change
@@ -328,7 +344,7 @@ for L in order:
             first, last = j == 0, j == len(segs) - 1
             fi = (0 if RC and L in JOIN_IN else FADE) if first else 0.042   # 1 frame at a tightened pause: no click
             fo = (0 if RC and L in JOIN_OUT else FADE) if last else 0.042
-            if piece: aud.append(clip(f"a{cid}", piece, "audio", t, fr(a0), sl, fin=fi, fout=fo))
+            if piece: aud.append(clip(f"a{cid}", piece, "audio", t, fr(PRE + a0), sl, fin=fi, fout=fo))
             elif wav: aud.append(clip(f"a{cid}", wav, "audio", t, fr(s0 + a0), sl))
             t += sl; length += sl
         if GRID and length: LBL.append(label_clip(f"lbl{n}", label_png(L, tk.get("take", k), have), t_start, length))
