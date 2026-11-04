@@ -169,3 +169,15 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   it in the scrub (through the bridge CLI; the token never reaches the page) and copies "L08 take 5" to paste back.
 - "Follow Premiere": select any clip (picture or sound) in the rough cut or scrub and the finder scrolls to that
   line with all its takes.
+
+## Take Finder panel (inside Premiere) and multicam review (2026-11-04)
+- Editors work in Premiere, not a browser. `panel-takefinder/` is our own CEP panel (separate from Sam's Claude
+  Bridge, which stays untouched). Install: copy it to ~/Library/Application Support/Adobe/CEP/extensions/
+  com.shownmedia.takefinder, restart Premiere, Window > Extensions > Take Finder.
+- After every build run `panel_data.py work_dir Client`: writes ~/.shown/takefinder.json + thumbnails.
+- Click any clip in the rough cut or scrub: the panel shows that line and every take (A/B frames, "In your rough
+  cut", "Cameraman reading it (skip)", "Windy", "No B camera"). "Show in scrub" jumps there; "Back to rough cut" returns.
+- Labels are plain words: "Line 10, take 4 of 6, Founder 1, Demo 1". Never codes like L10, never dot separators.
+- Multicam review: Premiere can't export the multicam monitor and Frame.io can't switch angles, so we build
+  `REVIEW 3 - Scrub multicam` with every camera on (GRID=1); `ppro_grid.py` tiles A left, B right, one sound track.
+  No paid grid plugin needed.
