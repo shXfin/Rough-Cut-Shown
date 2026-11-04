@@ -27,7 +27,7 @@ def rate(t, line_rms):
 lines = {}
 for t in T: lines.setdefault(t["line"], []).append(t)
 # the editor's choice wins: "Use this take" in the Take Finder panel, or a scrub take dragged into the rough cut by
-# hand (learn_swaps.py) lands in overrides.json next to takes.json as {"L07": {"take": 4, "src": "MixPre-013.WAV"}}
+# hand (hand_edits.py, with trims and deleted lines too) lands in overrides.json next to takes.json as {"L07": {"take": 4, "src": "MixPre-013.WAV"}}
 import os
 _ov = os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), "overrides.json")
 OVR = json.load(open(_ov)) if os.path.exists(_ov) else {}

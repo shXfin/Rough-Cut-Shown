@@ -16,7 +16,7 @@ TAKES = J("takes.json")
 GRID = os.environ.get("GRID", "1") == "1" and not RC and not os.environ.get("LINE")
 SRC = {os.path.basename(p): p for p in J("sources.json")}
 FPS = 24000/1001; fr = lambda s: int(round(s * FPS))
-GAP_TAKE, GAP_LINE, HANDLE = 1.0, 3.0, 0.5
+GAP_TAKE, GAP_LINE, HANDLE = 0.0, 1.0, 0.5   # Mateus: no black between takes, the take number resetting shows a new line
 TAIL = 0.5   # after the last word: Whisper ends words early, and a falling last word ("...more info") needs room to finish
 if RC: GAP_TAKE, GAP_LINE, HANDLE, TAIL = 0.0, 0.0, 0.2, 0.4   # seconds between takes / between lines; air kept around each take
 REC_TRACK = 1                                 # unbaked scrub only; baked pieces pick the speaker's own channel (best_channel)
@@ -76,7 +76,7 @@ _ref = []
 def EQREF():
     if not _ref: _ref.append(matcheq.project_ref(W, SRC, lambda w, a, d: best_channel(w, a, d)[0]))
     return _ref[0]
-def bake(wav, s0, s1, n, fin=0.012, fout=0.012):
+def bake(wav, s0, s1, n, fin=0.012, fout=0.012, mute_in=0.0, mute_out=0.0):
     os.makedirs(VO, exist_ok=True); out = os.path.join(VO, f"{'rc' if RC else 'take'}_{STAMP}_{n:03d}.wav"); d = s1 - s0
     ch, lv = best_channel(wav, s0, d); CHAN[n] = (ch + 1, [round(x, 1) for x in lv])
     shape = matcheq.ltas(matcheq.load(wav, s0, d, ch))   # this piece's tone, matched to the project's middle
@@ -88,7 +88,7 @@ def bake(wav, s0, s1, n, fin=0.012, fout=0.012):
     gain = TARGET_LUFS - float(I[-1].split()[1]) if I and "-inf" not in I[-1] else 0
     gain = max(-12, min(30, gain)); GAINS.append(gain)   # dialogue levelling, like riding the fader per line
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", tmp, "-af",
-                    f"volume={gain:.2f}dB,alimiter=limit=0.79:level=false,afade=t=in:d={fin},afade=t=out:st={d-fout:.3f}:d={fout},pan=stereo|c0=c0|c1=c0",
+                    f"volume={gain:.2f}dB,alimiter=limit=0.79:level=false,afade=t=in:st={mute_in:.3f}:d={max(fin, 0.03 if mute_in else fin):.3f},afade=t=out:st={d-mute_out-max(fout, 0.03 if mute_out else fout):.3f}:d={max(fout, 0.03 if mute_out else fout):.3f},pan=stereo|c0=c0|c1=c0",
                     "-c:a", "pcm_s24le", out], check=True)
     os.remove(tmp)
     return out
@@ -129,6 +129,31 @@ def clip(cid, path, kind, start, inp, length, enabled=True, fin=0, fout=0, punch
     return (f'<clipitem id="{cid}"><name>{escape(os.path.basename(path))}</name>{en}<duration>{fr(dur(path))}</duration>{RATE}'
             f'<start>{start}</start><end>{start+length}</end><in>{inp}</in><out>{inp+length}</out>{file_el(path, kind)}{st}{fx}</clipitem>')
 
+LBL = []   # burned-in labels for the multicam scrub export (Mateus): "CAM A - Take 1", take numbers restart every line
+def label_png(L, tnum, have):
+    from PIL import Image, ImageDraw, ImageFont
+    d = os.path.join(W, "labels"); os.makedirs(d, exist_ok=True)
+    out = os.path.join(d, f"{L}_take{tnum}_{''.join(sorted(have))}.png")
+    if os.path.exists(out): return out
+    im = Image.new("RGBA", (SW, SH), (0, 0, 0, 0)); g = ImageDraw.Draw(im)
+    big = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 46)
+    small = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 28)
+    for k, cam in enumerate(c for c, _ in CAMS):   # A on the left half, B on the right (ppro_grid.py)
+        x = 28 + k * SW // 2
+        top = f"CAM {cam} - Take {tnum}" + ("" if cam in have else " (no camera)")
+        sub = f"Line {int(L[1:])}"
+        w = max(g.textlength(top, font=big), g.textlength(sub, font=small)) + 32
+        g.rounded_rectangle([x, 26, x + w, 26 + 104], 10, fill=(0, 0, 0, 170))
+        g.text((x + 16, 34), top, font=big, fill=(255, 255, 255, 255))
+        g.text((x + 16, 88), sub, font=small, fill=(255, 214, 102, 255))
+    im.save(out); return out
+def label_clip(cid, png, start, length):   # a still on the top track for the whole take
+    fid = "f_" + os.path.basename(png).replace(".", "_")
+    fe = (f'<file id="{fid}"><name>{escape(os.path.basename(png))}</name><pathurl>file://localhost{urllib.parse.quote(png)}</pathurl>{RATE}'
+          f'<duration>{fr(3600)}</duration><media><video><samplecharacteristics><width>{SW}</width><height>{SH}</height></samplecharacteristics></video></media></file>')
+    return (f'<clipitem id="{cid}"><name>{escape(os.path.basename(png))}</name><duration>{fr(3600)}</duration>{RATE}'
+            f'<start>{start}</start><end>{start+length}</end><in>0</in><out>{length}</out>{fe}</clipitem>')
+
 SECTION = {"HOOK": "Hook", "AHA": "Demo 1", "AHA2": "Demo 2", "AHA3": "Demo 3", "FEATURES": "Features",
            "PROOF": "Social proof", "CLOSE": "Closing", "CTA": "Giveaway"}
 WHO = {"FOUNDER1": "Founder 1", "FOUNDER2": "Founder 2"}
@@ -145,11 +170,13 @@ def tc(x):
     f = int(round(x * FPS)); return f"{f // (24*3600):02d}:{f // (24*60) % 60:02d}:{f // 24 % 60:02d}:{f % 24:02d}"
 ONLY = os.environ.get("LINE")   # takes-by-line: one short sequence per script line, every take of it back to back
 if ONLY: by_line = {ONLY: by_line.get(ONLY, [])}
+# your choices from Premiere and the Take Finder (overrides.json): takes, trims, lines you deleted
+_ovp = os.path.join(W, "overrides.json"); OVR = json.load(open(_ovp)) if os.path.exists(_ovp) else {}
 PICKS = {}
 if RC:   # keep only each main line's pick (pick.py), in script order
     PICKS = {p["line"]: p for p in J("picks.json")}
     by_line = {L: [t for t in ts if L in PICKS and t["take"] == PICKS[L]["take"] and t["src"] == PICKS[L]["src"]]
-               for L, ts in by_line.items() if LINES[L]["main"]}
+               for L, ts in by_line.items() if LINES[L]["main"] and not OVR.get(L, {}).get("drop")}
 v = {c: [] for c, _ in CAMS}; aud, markers = [], []
 t = 0; n = 0; report = []; MAIN_PATH = None
 JOIN_IN, JOIN_OUT = {}, {}
@@ -168,6 +195,31 @@ def tighten(piece):
         segs.append((cur, cut_in)); cur = cut_out
     segs.append((cur, d))
     return [(round(a, 3), round(b, 3)) for a, b in segs]
+BREATH = 0.25   # quiet before the first word, so a line never starts on the syllable
+def clean_edges(wav, ch, start, end, s0, s1):
+    """Where the take's sound may start and stop. Whisper's start can be right, yet the 0.2 s handle before it can hold
+    a click, a lip smack or the cameraman (Notch L16: a 70 ms tap 0.15 s before "Fifteen" opened the line). Anything loud
+    before the first word's onset or after the last word's decay is muted, and the cut opens BREATH before the onset."""
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{s0:.3f}", "-t", f"{s1 - s0:.3f}", "-i", wav, "-af", f"pan=mono|c0=c{ch},highpass=f=100",
+                          "-ar", "16000", "-f", "s16le", "-"], capture_output=True).stdout
+    import numpy as np
+    x = np.frombuffer(raw, np.int16).astype(np.float32) / 32768; m = len(x) // 160
+    if m < 10: return s0, s1, 0.0, 0.0
+    e = 20 * np.log10(np.sqrt((x[:m * 160].reshape(m, 160) ** 2).mean(1)) + 1e-9)
+    loud = e > max(np.percentile(e, 10) + 15, np.percentile(e, 95) - 30)
+    T = lambda i: s0 + i * 0.01; I = lambda t: max(0, min(m - 1, int((t - s0) / 0.01)))
+    i = I(start + 0.02)
+    while i > 0 and (loud[i - 1] or loud[max(0, i - 2)] or loud[max(0, i - 3)]): i -= 1   # the onset may lead Whisper's start
+    onset = T(i); j = I(end - 0.02)
+    while j < m - 1 and (loud[j + 1] or loud[min(m - 1, j + 2)] or loud[min(m - 1, j + 3)] or loud[min(m - 1, j + 4)]): j += 1  # let the last word decay
+    decay = T(j + 1)
+    before = [k for k in range(0, max(0, i - 3)) if loud[k]]   # noises in the lead-in, apart from the word itself
+    after = [k for k in range(min(m, j + 6), m) if loud[k]]     # noises in the tail
+    cut_in = T(before[-1]) + 0.04 if before else s0
+    cut_out = T(after[0]) - 0.04 if after else s1
+    new_s0 = max(0.0, onset - BREATH)
+    return new_s0, s1, max(0.0, cut_in - new_s0), max(0.0, s1 - max(cut_out, decay + 0.05))
+PIECES = {}   # every audio piece -> line, take, source range: hand_edits.py reads your edits back through this
 LOOK = (None, 1.0); PUNCH = 1.15   # 4K source: a 15% punch-in stays sharp
 if RC:
     seq_ = [(L, by_line[L][0]) for L in order if by_line.get(L)]
@@ -198,7 +250,22 @@ for L in order:
                 other = [c for c in have if c != LOOK[0]]
                 look = (other[0], 1.0) if other else (LOOK[0], 1.0 if LOOK[1] != 1.0 else PUNCH)
             LOOK = look
-        piece = bake(wav, s0, s1, n) if wav and BAKE else None
+        mi = mo = 0.0
+        if RC and wav and BAKE:
+            o = OVR.get(L, {})
+            if "src_in" in o and o.get("take") == tk["take"]:   # your own trim from Premiere: exactly where you put it
+                s0, s1 = o["src_in"], o["src_out"]
+            else:
+                ch_ = best_channel(wav, s0, s1 - s0)[0]
+                if L not in JOIN_IN:
+                    s0, _, mi, _ = clean_edges(wav, ch_, tk["start"], tk["end"], s0, s1)
+                if L not in JOIN_OUT:
+                    _, _, _, mo = clean_edges(wav, ch_, tk["start"], tk["end"], s0, s1)
+            length = fr(s1) - fr(s0)
+            if mi or mo:   # re-find the cameras for the moved edges
+                have = {c: h for c, h in ((c, cam_for(c, tk["src"], s0, s1)) for c, _ in CAMS) if h[0]}
+        piece = bake(wav, s0, s1, n, mute_in=mi, mute_out=mo) if wav and BAKE else None
+        if piece: PIECES[os.path.basename(piece)] = dict(line=L, take=tk["take"], src=tk["src"], s0=round(s0, 3), s1=round(s1, 3))
         segs = tighten(piece) if RC and piece else [(0.0, s1 - s0)]   # long pauses inside the line cut down to a breath
         t_start = t; length = 0
         for j, (a0, a1) in enumerate(segs):
@@ -216,6 +283,7 @@ for L in order:
             if piece: aud.append(clip(f"a{cid}", piece, "audio", t, fr(a0), sl, fin=fi, fout=fo))
             elif wav: aud.append(clip(f"a{cid}", wav, "audio", t, fr(s0 + a0), sl))
             t += sl; length += sl
+        if GRID and length: LBL.append(label_clip(f"lbl{n}", label_png(L, tk.get("take", k), have), t_start, length))
         t = t_start
         if len(segs) > 1: TIGHT.append((L, len(segs) - 1, round((s1 - s0) - sum(b - a for a, b in segs), 2)))
         flag = "" if tk.get("flag") == "green" else ", reworded or rough"
@@ -289,12 +357,14 @@ if BAKE and GAINS:   # room tone under everything: no dead air in gaps, and the 
         print(f"room tone: {src} {s0:.1f}s for {d:.1f}s (looped), {TONE_UNDER_DB} dB under the dialogue's noise floor", file=sys.stderr)
 SEQ = os.path.splitext(os.path.basename(OUT))[0]
 vt = "".join(f'<track>{"".join(v[c])}</track>' for c in reversed([c for c, _ in CAMS]))   # V1 = B, V2 = A (top)
+if LBL: vt += f'<track>{"".join(LBL)}</track>'   # V3: the take labels, above both cameras
 xml = (f'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE xmeml>\n<xmeml version="4"><sequence id="{SEQ}"><name>{SEQ}</name>'
        f'<duration>{t}</duration>{RATE}<timecode>{RATE}<string>00:00:00:00</string><frame>0</frame><displayformat>NDF</displayformat></timecode>'
        f'<media><video><format><samplecharacteristics>{RATE}<width>{SW}</width><height>{SH}</height><pixelaspectratio>square</pixelaspectratio></samplecharacteristics></format>'
        f'{vt}</video><audio><track>{"".join(aud)}</track>{tone}</audio></media>{"".join(markers)}</sequence></xmeml>\n')
 open(OUT, "w").write(xml)
 json.dump(report, open(OUT.replace(".xml", ".takes.json"), "w"), indent=1)
+json.dump(PIECES, open(OUT.replace(".xml", ".pieces.json"), "w"), indent=1)
 both = sum(r["cams"] == "A+B" for r in report); none = sum(r["cams"] == "sound only" for r in report)
 gaps = {}
 for r in report:

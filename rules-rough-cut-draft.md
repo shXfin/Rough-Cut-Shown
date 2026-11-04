@@ -211,7 +211,7 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   - The old rough cut is never deleted on a panel rebuild: it waits in Sequences/Old as
     "... (before your last swap)" (one copy, replaced each time), so hand trims in it can be copied back.
   - Hand swaps count: every audio piece file is named in takefinder.json, so a scrub take dragged into the rough cut
-    is recognised by the panel (by file, not by time) and learn_swaps.py keeps it on the next rebuild.
+    is recognised by the panel (by file, not by time) and hand_edits.py keeps it on the next rebuild (trims and deleted lines too).
   - A rebuild redoes the whole rough cut sequence: hand trims and extra edits in it don't carry over (they stay in
     the backup). Make take choices first, fine edits after.
 
@@ -223,3 +223,17 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   9 dB, cut 3 dB at most, smoothed, no rumble added). Spread in clarity across pieces went from 30 dB to ~15 dB,
   hiss in pauses stays ~40 dB under the voice. Measure, never assume: compare each piece to its raw channel.
 - Don't use the median of ALL pieces as the target: the speaker with most lines (the muffled one) drags it down.
+
+## Hand edits, clean starts, labels (Notch, 2026-11-05)
+- A rebuild while the editor works lost his trims and swaps (they survived only in Sequences/Old). Now:
+  hand_edits.py reads the live sequence before every rebuild and keeps take swaps, trims (exact recording in/out)
+  and deleted lines in overrides.json; anything else (extra clips, effects, keyframes) is listed as not carried.
+  rebuild_rc.sh refuses to replace the sequence if it changed while building; the panel shows a red banner then.
+  Claude never starts a rebuild of a sequence the editor may be in without saying so first.
+- Every build writes <build>.pieces.json (piece file -> line, take, recording range), so edits are read exactly.
+- Clean starts: a line opened on a click 0.15 s before "Fifteen" (L16). clean_edges() finds the real voice onset,
+  mutes any noise in the lead-in or tail, and opens BREATH (0.25 s) of quiet before the first word.
+- Sound, round 2: full match EQ (up to 13 dB) plus a light harmonic exciter above 3.5 kHz on pieces more than 8 dB
+  dull: Founder 2 measured -29.3 against Founder 1's -28.3 (EQ alone stopped at -34.6; the editor's cut is -45).
+- Multicam scrub export (Mateus): "CAM A - Take 1" / "CAM B - Take 1" burned in over each half (labels/ PNGs on V3),
+  take numbers restart every line, no black between takes, 1 s between lines.

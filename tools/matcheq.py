@@ -1,11 +1,11 @@
 # matcheq.py: tone matching per piece, like an engineer's match EQ across a dialogue edit.
 # Founder 2's lav on Notch was buried under his jacket: 8-12 dB less 2-10 kHz than Founder 1, "under water".
-# Each piece's long-term speech spectrum (1/3 octave, shape only) is pulled 80% toward the CLEARER HALF of the project's
+# Each piece's long-term speech spectrum (1/3 octave, shape only) is pulled fully toward the CLEARER HALF of the project's
 # pieces (the middle of all pieces sat on the muffled mic, because he had most of the lines, and made Founder 1 dull):
 # dull pieces come up, clear ones stay (cut 3 dB at most), nobody gets hyped. Capped, smoothed, no rumble added.
 import json, os, subprocess, numpy as np
 CENT = [100,125,160,200,250,315,400,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500]
-C = np.array(CENT); STRENGTH, LO, HI = 0.8, -3, 9
+C = np.array(CENT); STRENGTH, LO, HI = 1.0, -3, 13
 def load(path, ss, t, ch):
     cmd = ["ffmpeg", "-v", "error", "-ss", f"{ss:.3f}", "-t", f"{t:.3f}", "-i", path, "-af", f"pan=mono|c0=c{ch},highpass=f=90",
            "-ar", "48000", "-f", "f32le", "-"]
@@ -34,4 +34,9 @@ def eq_for(shape, ref):
     d = np.convolve(np.pad(d, 1, mode="edge"), [0.25, 0.5, 0.25], "valid")   # broad strokes, no ringing
     d[C < 200] = np.minimum(d[C < 200], 0)                                  # never add rumble back
     d = np.clip(d, LO, HI)
-    return "firequalizer=gain_entry='" + ";".join(f"entry({c},{g:.1f})" for c, g in zip(CENT, d)) + "',"
+    out = "firequalizer=gain_entry='" + ";".join(f"entry({c},{g:.1f})" for c, g in zip(CENT, d)) + "',"
+    # a lav buried under clothing has little top end left to boost: EQ alone stops ~5 dB short (Notch L16).
+    # A light harmonic exciter above 3.5 kHz rebuilds it, scaled by how dull the piece is; clear pieces get none.
+    deficit = float((ref - shape)[C >= 2000].mean())
+    if deficit > 8: out += f"aexciter=amount={min(2.0, (deficit - 6) / 4):.2f}:drive=6:blend=0:freq=3500:ceil=12000,"
+    return out

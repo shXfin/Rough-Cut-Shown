@@ -63,7 +63,7 @@ textarea{width:100%;margin-top:6px;background:#1b1b1b;color:var(--ink);border:1p
 </head>
 <body>
 <header>
-  <div class="row"><h1>Take Finder <small id="ver" style="color:#777;font-weight:500">v6.1</small></h1><button id="back">Back to rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
+  <div class="row"><h1>Take Finder <small id="ver" style="color:#777;font-weight:500">v6.2</small></h1><button id="back">Back to rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
   <div class="row" style="margin-top:8px"><button id="attn" class="wide attn">Needs your attention</button><button id="myfl" class="wide myfl">My flags</button></div>
   <div id="attnList" class="list"></div>
   <div id="flList" class="list"></div>
@@ -74,6 +74,7 @@ textarea{width:100%;margin-top:6px;background:#1b1b1b;color:var(--ink);border:1p
   <select id="pickLine"></select>
   <div id="status"></div>
 </header>
+<div id="busy" style="display:none;margin:8px 10px 0;padding:8px;border:1px solid var(--bad);border-radius:4px;background:#4a2422;color:#ffd9d4;font-weight:700"></div>
 <div id="old" style="display:none;margin:8px 10px 0;padding:8px;border:1px solid var(--warn);border-radius:4px;color:#ffd79a;font-weight:700">
   You're in the OLD copy (before your last swap). <button id="openNew" style="margin-left:4px">Open the current rough cut</button></div>
 <div id="line"></div>
@@ -278,6 +279,9 @@ async function poll(){
       if (++tick % 4 === 0) {   // a rebuild rewrote the data: reload by itself
         const s = await ev(`(function(){var f=new File("~/.shown/takefinder.json");return f.exists?String(f.modified.getTime()):"";})()`);
         if (s && stamp && s !== stamp) { await load(); status("Rough cut rebuilt. Panel updated."); }
+      const b = await ev(readJS("~/.shown/busy.json")); let busy = null; try { busy = b ? JSON.parse(b) : null; } catch (e) {}
+      $("busy").style.display = busy ? "block" : "none";
+      if (busy) $("busy").textContent = `Rebuilding ${busy.seq} (since ${busy.since}). Hold your edits in it until this goes away: edits made now won't be replaced, the rebuild stops instead.`;
       }
       const r = String(await ev(SEL)); const [seq, ps, pn, ss, sn] = r.split("|"); const ph = parseFloat(ps), st = parseFloat(ss);
       if (seq && seq !== lastSeq) { lastSeq = seq; $("old").style.display = /\(before your last swap\)/.test(seq) ? "block" : "none"; }
