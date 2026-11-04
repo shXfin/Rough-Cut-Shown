@@ -83,6 +83,9 @@ def bake(wav, s0, s1, n, fin=0.012, fout=0.012, mute_in=0.0, mute_out=0.0):
     af = f"pan=mono|c0=c{ch}," + CLEAN.replace("equalizer=f=250", matcheq.eq_for(shape, EQREF()) + "equalizer=f=250", 1)
     tmp = out + ".tmp.wav"
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{s0:.3f}", "-t", f"{d:.3f}", "-i", wav, "-af", af, "-ar", "48000", "-c:a", "pcm_f32le", tmp], check=True)
+    import polish   # gust-only wind cut, then pops/bumps turned down to speech level (hand clip-gain work)
+    polish.dewind(tmp, tmp + ".w.wav"); os.replace(tmp + ".w.wav", tmp)
+    polish.despike(tmp, tmp + ".s.wav"); os.replace(tmp + ".s.wav", tmp)
     o = subprocess.run(["ffmpeg", "-hide_banner", "-i", tmp, "-af", "ebur128", "-f", "null", "-"], capture_output=True, text=True).stderr
     I = [l for l in o.splitlines() if l.strip().startswith("I:")]
     gain = TARGET_LUFS - float(I[-1].split()[1]) if I and "-inf" not in I[-1] else 0
@@ -195,6 +198,14 @@ def tighten(piece):
         segs.append((cur, cut_in)); cur = cut_out
     segs.append((cur, d))
     return [(round(a, 3), round(b, 3)) for a, b in segs]
+def quiet_between(wav, t0, t1):   # the quietest 30 ms between two times (both lavs summed), for a cut between words
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{t0:.3f}", "-t", f"{t1 - t0:.3f}", "-i", wav, "-af", "pan=mono|c0=c0+c1,highpass=f=100",
+                          "-ar", "16000", "-f", "s16le", "-"], capture_output=True).stdout
+    import numpy as np
+    x = np.frombuffer(raw, np.int16).astype(np.float32); m = len(x) // 160
+    if m < 4: return (t0 + t1) / 2
+    e = np.convolve((x[:m * 160].reshape(m, 160) ** 2).mean(1), np.ones(3) / 3, "same")
+    return t0 + (int(np.argmin(e[1:-1])) + 1) * 0.01
 BREATH = 0.25   # quiet before the first word, so a line never starts on the syllable
 def clean_edges(wav, ch, start, end, s0, s1):
     """Where the take's sound may start and stop. Whisper's start can be right, yet the 0.2 s handle before it can hold
@@ -214,18 +225,43 @@ def clean_edges(wav, ch, start, end, s0, s1):
     while j < m - 1 and (loud[j + 1] or loud[min(m - 1, j + 2)] or loud[min(m - 1, j + 3)] or loud[min(m - 1, j + 4)]): j += 1  # let the last word decay
     decay = T(j + 1)
     before = [k for k in range(0, max(0, i - 3)) if loud[k]]   # noises in the lead-in, apart from the word itself
-    after = [k for k in range(min(m, j + 6), m) if loud[k]]     # noises in the tail
+    after = [k for k in range(min(m, j + 30), m) if loud[k]]    # noises in the tail, 0.3 s clear of the last word's fade
+    # ("...more info" lost its fade when the check started 60 ms after the decay: Notch L36)
     cut_in = T(before[-1]) + 0.04 if before else s0
     cut_out = T(after[0]) - 0.04 if after else s1
     new_s0 = max(0.0, onset - BREATH)
-    return new_s0, s1, max(0.0, cut_in - new_s0), max(0.0, s1 - max(cut_out, decay + 0.05))
+    return new_s0, s1, max(0.0, cut_in - new_s0), max(0.0, s1 - max(cut_out, decay + 0.3))
 PIECES = {}   # every audio piece -> line, take, source range: hand_edits.py reads your edits back through this
+# REBAKE=all (or piece names): re-make existing pieces with today's sound chain at EXACTLY their recording range, so
+# the files keep their length and every edit made on them in Premiere still fits; ppro_relink.py swaps them in.
+if os.environ.get("REBAKE") and BAKE:
+    import glob as _gl
+    man = {}
+    for f in sorted(_gl.glob(os.path.join(W, f"*_{'RC' if RC else 'SCRUB'}_*.pieces.json")), key=os.path.getmtime): man.update(json.load(open(f)))
+    want = list(man) if os.environ["REBAKE"] == "all" else os.environ["REBAKE"].split(",")
+    TKS = {(t["line"], t["take"], t["src"]): t for t in TAKES}; done = {}
+    for n_, name in enumerate(want):
+        pc = man.get(name)
+        if not pc: print("unknown piece", name); continue
+        wav = SRC[pc["src"]]; tk = TKS.get((pc["line"], pc["take"], pc["src"]))
+        s0, s1 = pc["s0"], pc["s1"]; mi = mo = 0.0
+        if tk and not ("src_in" in OVR.get(pc["line"], {}) and OVR[pc["line"]].get("take") == pc["take"]):
+            ch_ = best_channel(wav, s0, s1 - s0)[0]
+            ns0, _, mi, mo = clean_edges(wav, ch_, tk["start"], tk["end"], s0, s1)
+            mi = max(0.0, mi + ns0 - s0)
+        new = bake(wav, s0, s1, 500 + n_, mute_in=mi, mute_out=mo)
+        PIECES[os.path.basename(new)] = pc; done[name] = new
+    json.dump(PIECES, open(OUT.replace(".xml", ".pieces.json"), "w"), indent=1)
+    json.dump(done, open(os.path.join(W, "rebake_map.json"), "w"), indent=1)
+    print(f"re-made {len(done)} pieces"); sys.exit(0)
 LOOK = (None, 1.0); PUNCH = 1.15   # 4K source: a 15% punch-in stays sharp
 if RC:
     seq_ = [(L, by_line[L][0]) for L in order if by_line.get(L)]
     for (La, a), (Lb, b) in zip(seq_, seq_[1:]):
         if a["src"] == b["src"] and -1.0 <= b["start"] - a["end"] < 1.6:
-            cut = (a["end"] + b["start"]) / 2 if b["start"] > a["end"] else b["start"] - 0.02
+            # cut in the real silence between the two lines, found in the sound: Whisper had L39 start inside L38's last
+            # word ("...more in|fo"), and cutting at its start chopped "info" (Notch 3:19)
+            cut = quiet_between(SRC[a["src"]], a["end"] - 0.05, max(b["start"], a["end"]) + 0.6)
             JOIN_OUT[La] = JOIN_IN[Lb] = cut
 for L in order:
     ts = sorted(by_line.get(L, []), key=lambda x: (x["src"], x["start"]))   # shooting order
@@ -236,8 +272,20 @@ for L in order:
         if RC:   # lines that run on in one take join at the gap between them: no word plays twice
             if L in JOIN_IN: s0 = JOIN_IN[L]
             if L in JOIN_OUT: s1 = JOIN_OUT[L]
-        length = fr(s1) - fr(s0)
         wav = SRC.get(tk["src"])
+        mi = mo = 0.0
+        if RC and wav and BAKE:   # edges first, cameras after: the cameras must follow the sound's final range
+            # (Notch: cameras looked up before the trim moved the sound put A cam 0.5-5 s out of sync on L07/L08/L27)
+            o = OVR.get(L, {})
+            if "src_in" in o and o.get("take") == tk["take"]:   # your own trim from Premiere: exactly where you put it
+                s0, s1 = o["src_in"], o["src_out"]
+            else:
+                ch_ = best_channel(wav, s0, s1 - s0)[0]
+                if L not in JOIN_IN:
+                    s0, _, mi, _ = clean_edges(wav, ch_, tk["start"], tk["end"], s0, s1)
+                if L not in JOIN_OUT:
+                    _, _, _, mo = clean_edges(wav, ch_, tk["start"], tk["end"], s0, s1)
+        length = fr(s1) - fr(s0)
         on = None
         have = {}
         for cam, _ in CAMS:
@@ -250,20 +298,6 @@ for L in order:
                 other = [c for c in have if c != LOOK[0]]
                 look = (other[0], 1.0) if other else (LOOK[0], 1.0 if LOOK[1] != 1.0 else PUNCH)
             LOOK = look
-        mi = mo = 0.0
-        if RC and wav and BAKE:
-            o = OVR.get(L, {})
-            if "src_in" in o and o.get("take") == tk["take"]:   # your own trim from Premiere: exactly where you put it
-                s0, s1 = o["src_in"], o["src_out"]
-            else:
-                ch_ = best_channel(wav, s0, s1 - s0)[0]
-                if L not in JOIN_IN:
-                    s0, _, mi, _ = clean_edges(wav, ch_, tk["start"], tk["end"], s0, s1)
-                if L not in JOIN_OUT:
-                    _, _, _, mo = clean_edges(wav, ch_, tk["start"], tk["end"], s0, s1)
-            length = fr(s1) - fr(s0)
-            if mi or mo:   # re-find the cameras for the moved edges
-                have = {c: h for c, h in ((c, cam_for(c, tk["src"], s0, s1)) for c, _ in CAMS) if h[0]}
         piece = bake(wav, s0, s1, n, mute_in=mi, mute_out=mo) if wav and BAKE else None
         if piece: PIECES[os.path.basename(piece)] = dict(line=L, take=tk["take"], src=tk["src"], s0=round(s0, 3), s1=round(s1, 3))
         segs = tighten(piece) if RC and piece else [(0.0, s1 - s0)]   # long pauses inside the line cut down to a breath

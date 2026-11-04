@@ -237,3 +237,16 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   dull: Founder 2 measured -29.3 against Founder 1's -28.3 (EQ alone stopped at -34.6; the editor's cut is -45).
 - Multicam scrub export (Mateus): "CAM A - Take 1" / "CAM B - Take 1" burned in over each half (labels/ PNGs on V3),
   take numbers restart every line, no black between takes, 1 s between lines.
+
+## In-place fixes on an edited cut (Notch, 2026-11-05)
+- Never rebuild a cut the editor has worked on to fix sound or sync. Fix in place:
+  check_sync.py (every camera clip vs the sound under it; --fix slides only the source frames, positions untouched),
+  REBAKE=all + ppro_relink.py (sound re-made at exactly the same length, clips pointed at it: every edit stays),
+  live_script_check.py (1:1 of the cut as it is in Premiere: missing lines, doubled lines, order, wording).
+- Sync bug: cameras were looked up before a trim/clean start moved the sound (L07/L08/L27 0.5-42 s off). Edges first.
+- Joined lines cut in the real silence between them (quiet_between), never at Whisper's start (it chopped "info").
+- polish.py: pops/bumps turned down to speech level; wind cut on the low band only during gusts, measured against the
+  piece's calmest moments.
+- No grading until the cut is final and the 4K is conformed.
+- Test every Premiere script change on a CLONE first, and find the clone by name, never by its index in the list
+  (an index guess renamed a Wajo sequence; restored from the saved project).
