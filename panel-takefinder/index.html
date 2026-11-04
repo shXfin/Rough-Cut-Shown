@@ -35,12 +35,21 @@ select{width:100%;margin-top:8px;background:#1b1b1b;color:var(--ink);border:1px 
 .tags{margin-top:3px;display:flex;flex-wrap:wrap;gap:2px 10px;font-weight:700}
 .t-pick{color:var(--pick)} .t-bad{color:var(--bad)} .t-warn{color:var(--warn)} .t-muted{color:var(--muted);font-weight:500}
 .said{color:var(--muted);margin-top:3px}
+.attn{width:100%;background:#4a2422;border-color:#ff6b5c;color:#ffd9d4;font-weight:700;text-align:left}
+#attnList{margin-top:6px;border:1px solid var(--rule);border-radius:4px;max-height:220px;overflow:auto}
+#attnList div{padding:7px 9px;border-top:1px solid var(--rule);cursor:pointer}
+#attnList div:first-child{border-top:0}
+#attnList div:hover{background:#333}
+#attnList b{display:block}
+#attnList span{color:var(--bad)}
 #status{color:var(--pick);min-height:14px;margin-top:6px}
 </style>
 </head>
 <body>
 <header>
-  <div class="row"><h1>Take Finder <small id="ver" style="color:#777;font-weight:500">v4</small></h1><button id="back">Back to rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
+  <div class="row"><h1>Take Finder <small id="ver" style="color:#777;font-weight:500">v5</small></h1><button id="back">Back to rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
+  <div class="row" style="margin-top:8px"><button id="attn" class="attn">Needs your attention</button></div>
+  <div id="attnList" style="display:none"></div>
   <select id="pickLine"></select>
   <div id="status"></div>
 </header>
@@ -72,6 +81,9 @@ async function load(){
   $("hint").style.color = ""; $("hint").textContent = "Click any clip in the rough cut or the scrub. Its other takes show up here.";
   $("pickLine").innerHTML = '<option value="">Browse a line...</option>' + D.lines.map(l =>
     `<option value="${l.id}">Line ${l.num}: ${esc(l.text.slice(0, 60))}</option>`).join("");
+  const need = D.lines.filter(l => l.check.length);
+  $("attn").textContent = need.length ? `Needs your attention (${need.length})` : "Nothing needs your attention";
+  $("attnList").innerHTML = need.map(l => `<div data-id="${l.id}"><b>Line ${l.num}: ${esc(l.text.slice(0, 50))}</b><span>${esc(l.check.join(", "))}</span></div>`).join("");
   if (current) show(current, null);
 }
 function show(id, hereTake){
@@ -107,6 +119,12 @@ $("back").addEventListener("click", async () => {
   const l = D && D.lines.find(x => x.id === current);
   const r = await ev(jumpJS(D.rc_seq, l && l.rc_at != null ? l.rc_at + 0.05 : 0));
   status(r === "ok" ? "Back in the rough cut" : "Couldn't find the rough cut sequence");
+});
+$("attn").addEventListener("click", () => { const L = $("attnList"); L.style.display = L.style.display === "none" ? "block" : "none"; });
+$("attnList").addEventListener("click", async e => {   // tap a line: show its takes and jump to it in the rough cut
+  const it = e.target.closest("[data-id]"); if (!it) return;
+  const l = D.lines.find(x => x.id === it.dataset.id); show(l.id, null);
+  if (l.rc_at != null) { const r = await ev(jumpJS(D.rc_seq, l.rc_at + 0.05)); status(r === "ok" ? `Rough cut: Line ${l.num}` : "Couldn't find the rough cut"); }
 });
 $("reload").addEventListener("click", () => { load(); status("Reloaded"); });
 $("pickLine").addEventListener("change", e => e.target.value && show(e.target.value, null));

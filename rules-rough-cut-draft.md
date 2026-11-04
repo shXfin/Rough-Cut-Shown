@@ -182,3 +182,14 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   and Frame.io can't switch angles, so the scrub is built
   `REVIEW 3 - Scrub multicam` with every camera on (GRID=1); `ppro_grid.py` tiles A left, B right, one sound track.
   No paid grid plugin needed.
+
+## Scrub markers and the attention list (2026-11-04)
+- After the scrub is swapped in, run `ppro_markers.py work_dir "<scrub name>"`:
+  - one range marker per script line across all its takes, alternating green / blue, "Line 1: ... (19 takes)",
+    so the editor sees where one line's takes end and the next begin (the per-take marker clutter is removed);
+  - a clip marker on each take's own audio piece: "PICKED, take 6 of 19" (green), "ALT, take 3 of 19", or
+    "CAMERAMAN READING, skip" (red). The pieces are scrub-only files, so these never appear in the rough cut.
+  Premiere ignores marker colours and clip markers in XML, so this has to run inside Premiere afterwards.
+- The Take Finder panel has a "Needs your attention (N)" button: tap it for the list of lines to check; tapping a
+  line shows its takes and jumps to it in the rough cut.
+- Markers are not burned into an exported video. For a Frame.io review, burn the line/take text in.
