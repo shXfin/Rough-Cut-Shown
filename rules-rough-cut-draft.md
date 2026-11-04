@@ -167,3 +167,5 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   row per script line: the rough cut's pick first (green), then every other take as A/B thumbnails with take number,
   scrub timecode and flags (cameraman read, wind, missing cam, CHECK). Clicking a take jumps Premiere's playhead to
   it in the scrub (through the bridge CLI; the token never reaches the page) and copies "L08 take 5" to paste back.
+- "Follow Premiere": select any clip (picture or sound) in the rough cut or scrub and the finder scrolls to that
+  line with all its takes.

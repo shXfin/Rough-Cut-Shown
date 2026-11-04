@@ -55,7 +55,26 @@ def jump(seq, t):
             f"if(!q) 'missing'; else {{ app.project.openSequence(q.sequenceID); q.setPlayerPosition('{ticks}'); 'ok'; }}")
     o = subprocess.run([BR, "eval", "ppro", code], capture_output=True, text=True, timeout=30)
     return (o.stdout.strip().splitlines() or ["error"])[-1]
+RC_SPANS = sorted((r["at"], r["at"] + r["dur"], r["line"]) for r in RC.values())
+SC_SPANS = sorted((r["at"], r["at"] + r["dur"], r["line"]) for r in SCRUB)
+def selected():
+    """The clip selected in Premiere's active sequence -> its script line (rough cut or scrub), or the playhead's."""
+    code = ("var q=app.project.activeSequence; if(!q) 'none'; else { var s=q.getSelection(), t=-1;"
+            " for(var i=0;i<s.length;i++) if(s[i].start){ t=s[i].start.seconds; break; }"
+            " (t<0 ? 'P' : 'S')+'|'+q.name+'|'+(t<0 ? q.getPlayerPosition().seconds : t+0.05); }")
+    o = subprocess.run([BR, "eval", "ppro", code], capture_output=True, text=True, timeout=15)
+    parts = (o.stdout.strip().splitlines() or ["none"])[-1].split("|")
+    if len(parts) != 3: return {}
+    kind, seq, t = parts[0], parts[1], float(parts[2])
+    spans = RC_SPANS if seq == RC_SEQ else SC_SPANS if seq == SCRUB_SEQ else []
+    line = next((L for a, b, L in spans if a <= t < b), None)
+    return {"line": line, "by": "selection" if kind == "S" else "playhead", "seq": seq}
 class H(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path.startswith("/selected"):
+            b = json.dumps(selected()).encode()
+            self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers(); self.wfile.write(b); return
+        return super().do_GET()
     def __init__(self, *a, **k): super().__init__(*a, directory=FD, **k)
     def log_message(self, *a): pass
     def do_POST(self):

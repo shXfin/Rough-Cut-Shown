@@ -13,7 +13,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system
 .top .sum{color:var(--muted)}
 .top label{color:var(--muted);display:flex;gap:6px;align-items:center;cursor:pointer}
 #toast{margin-left:auto;color:var(--pick);font-weight:600;min-height:1em}
-.line{border-bottom:1px solid var(--rule);padding:16px 20px 18px}
+.line{border-bottom:1px solid var(--rule);padding:16px 20px 18px;scroll-margin-top:64px}
 .line header{display:grid;grid-template-columns:56px 1fr auto;gap:2px 14px;align-items:baseline;margin-bottom:10px}
 .line h2{margin:0;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
 .script{font-size:16px;font-weight:600}
@@ -38,6 +38,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system
 .t.pick{color:var(--pick)} .t.feed{color:var(--feed)} .t.wind{color:var(--wind)} .t.miss{color:var(--muted);font-weight:500}
 .take p{margin:4px 0 0;color:var(--muted);font-size:12px}
 .only-check .line:not(.has-check){display:none}
+.line.followed{background:#1f2a24;box-shadow:inset 4px 0 0 var(--pick)}
 </style>
 </head>
 <body>
@@ -45,6 +46,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system
   <h1>Take Finder</h1>
   <span class="sum">{{N}} lines · {{CHECKS}} need your ear · click a take to jump to it in the scrub</span>
   <label><input type="checkbox" id="onlyCheck"> Only lines to check</label>
+  <label><input type="checkbox" id="follow" checked> Follow Premiere (select a clip, its takes come up)</label>
   <span id="toast"></span>
 </div>
 <main>
@@ -68,6 +70,22 @@ const only = document.getElementById("onlyCheck");
 try { only.checked = localStorage.getItem("onlyCheck") === "1"; } catch (_) {}
 const apply = () => { document.body.classList.toggle("only-check", only.checked); try { localStorage.setItem("onlyCheck", only.checked ? "1" : "0"); } catch (_) {} };
 only.addEventListener("change", apply); apply();
+const follow = document.getElementById("follow"); let lastLine = null;
+async function poll(){
+  if (follow.checked) {
+    try {
+      const r = await (await fetch("/selected")).json();
+      if (r.line && r.line !== lastLine) {
+        lastLine = r.line;
+        document.querySelectorAll(".line.followed").forEach(x => x.classList.remove("followed"));
+        const row = document.getElementById(r.line);
+        if (row) { row.classList.add("followed"); row.scrollIntoView({block: "start", behavior: "smooth"}); say(`${r.line}: takes for the clip under your ${r.by}`); }
+      }
+    } catch (_) {}
+  }
+  setTimeout(poll, 1500);
+}
+poll();
 </script>
 </body>
 </html>
