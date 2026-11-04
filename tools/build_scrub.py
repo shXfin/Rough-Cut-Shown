@@ -6,6 +6,7 @@
 import json, os, re, subprocess, sys, urllib.parse
 from xml.sax.saxutils import escape
 W, OUT = sys.argv[1], sys.argv[2]
+PJ = (os.environ.get("PROJECT") or os.path.basename(os.path.dirname(os.path.abspath(W)))).lower()   # project name = the folder above work/ (Notch/work -> notch_*.xml); PROJECT= overrides
 RC = len(sys.argv) > 3 and sys.argv[3] == "--rough-cut"   # rough cut: only the picked take of each main line, butted together
 J = lambda n: json.load(open(os.path.join(W, n)))
 LINES = {l["line"]: l for l in J("lines.json")}
@@ -130,7 +131,7 @@ for t in TAKES: by_line.setdefault(t["line"], []).append(t)
 N_TAKES = {}
 for _t in TAKES: N_TAKES[_t["line"]] = N_TAKES.get(_t["line"], 0) + 1
 NEEDS = []
-_sr = os.environ.get("SCRUB_REPORT", os.path.join(W, "notch_SCRUB_work.takes.json"))   # where each take sits in the scrub
+_sr = os.environ.get("SCRUB_REPORT", os.path.join(W, f"{PJ}_SCRUB_grid.takes.json"))   # where each take sits in the scrub
 SCRUB_AT = {(r["line"], r["take"]): r["at"] for r in (json.load(open(_sr)) if os.path.exists(_sr) else [])}
 def tc(x):
     if x is None: return "-"

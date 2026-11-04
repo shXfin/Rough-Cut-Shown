@@ -2,12 +2,13 @@
 # For every script line: its rough-cut spot, the pick, and every take with scrub timecode, flags and A/B frames.
 import json, os, subprocess, sys
 W = os.path.abspath(sys.argv[1]); CLIENT = sys.argv[2] if len(sys.argv) > 2 else "Project"
+PJ = (os.environ.get("PROJECT") or os.path.basename(os.path.dirname(os.path.abspath(W)))).lower()   # project name = the folder above work/ (Notch/work -> notch_*.xml); PROJECT= overrides
 TH = os.path.join(W, "finder", "thumbs"); os.makedirs(TH, exist_ok=True)
 LINES = {l["line"]: l for l in json.load(open(os.path.join(W, "lines.json")))}
-SCRUB = json.load(open(os.path.join(W, os.environ.get("SCRUB_REPORT", "notch_SCRUB_grid.takes.json"))))
+SCRUB = json.load(open(os.path.join(W, os.environ.get("SCRUB_REPORT", f"{PJ}_SCRUB_grid.takes.json"))))
 # sound checks come straight from takes.json, so a newer check shows up without rebuilding the scrub
 TK = {(t["line"], t["take"], t["src"]): t for t in json.load(open(os.path.join(W, "takes.json")))}
-RC = {r["line"]: r for r in json.load(open(os.path.join(W, os.environ.get("RC_REPORT", "notch_RC_clean.takes.json"))))}
+RC = {r["line"]: r for r in json.load(open(os.path.join(W, os.environ.get("RC_REPORT", f"{PJ}_RC_clean.takes.json"))))}
 import re
 FPS = 24000 / 1001
 def pieces(xml, report):   # audio piece file name -> (line, take): lets the panel name any clip, wherever you move it
@@ -40,11 +41,15 @@ for L, ln in LINES.items():
                       rc_at=p["at"] if p else None, rc_dur=p["dur"] if p else None, check=(p or {}).get("check") or [],
                       takes=sorted(takes, key=lambda t: not t["picked"])))
 cfg = os.path.expanduser("~/.shown"); os.makedirs(cfg, exist_ok=True)
+try:   # earlier builds' pieces stay named: the old copy in Sequences/Old (and hand-placed clips) still use them
+    _prev = json.load(open(os.path.join(cfg, "takefinder.json")))
+    _old_files = _prev.get("files", {}) if _prev.get("work") == W else {}
+except Exception: _old_files = {}
 data = dict(client=CLIENT, rc_seq=os.environ.get("RC_SEQ", f"{CLIENT.upper()} REVIEW 1 - Rough cut (picked takes)"),
             scrub_seq=os.environ.get("SCRUB_SEQ", f"{CLIENT.upper()} REVIEW 2 - Scrub (every take, A and B side by side)"), lines=lines,
             work=W, built=__import__("time").strftime("%H:%M"),
-            files={**pieces(os.path.join(W, os.environ.get("SCRUB_XML", "notch_SCRUB_grid.xml")), SCRUB),
-                   **pieces(os.path.join(W, os.environ.get("RC_XML", "notch_RC_clean.xml")), list(RC.values()))})
+            files={**_old_files, **pieces(os.path.join(W, os.environ.get("SCRUB_XML", f"{PJ}_SCRUB_grid.xml")), SCRUB),
+                   **pieces(os.path.join(W, os.environ.get("RC_XML", f"{PJ}_RC_clean.xml")), list(RC.values()))})
 json.dump(data, open(os.path.join(cfg, "takefinder.json"), "w"), indent=1)
 print(f"Take Finder data: {len(lines)} lines, {len(data['files'])} named pieces -> ~/.shown/takefinder.json")
 # the panel's "Rebuild rough cut" button opens this in Terminal (Premiere can open a file, not run a script)

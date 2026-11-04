@@ -63,7 +63,7 @@ textarea{width:100%;margin-top:6px;background:#1b1b1b;color:var(--ink);border:1p
 </head>
 <body>
 <header>
-  <div class="row"><h1>Take Finder <small id="ver" style="color:#777;font-weight:500">v6</small></h1><button id="back">Back to rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
+  <div class="row"><h1>Take Finder <small id="ver" style="color:#777;font-weight:500">v6.1</small></h1><button id="back">Back to rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
   <div class="row" style="margin-top:8px"><button id="attn" class="wide attn">Needs your attention</button><button id="myfl" class="wide myfl">My flags</button></div>
   <div id="attnList" class="list"></div>
   <div id="flList" class="list"></div>
@@ -74,6 +74,8 @@ textarea{width:100%;margin-top:6px;background:#1b1b1b;color:var(--ink);border:1p
   <select id="pickLine"></select>
   <div id="status"></div>
 </header>
+<div id="old" style="display:none;margin:8px 10px 0;padding:8px;border:1px solid var(--warn);border-radius:4px;color:#ffd79a;font-weight:700">
+  You're in the OLD copy (before your last swap). <button id="openNew" style="margin-left:4px">Open the current rough cut</button></div>
 <div id="line"></div>
 <div id="hint">Click any clip in the rough cut or the scrub. Its other takes show up here.</div>
 <div id="takes"></div>
@@ -250,36 +252,44 @@ $("back").addEventListener("click", async () => {
   const r = await ev(jumpJS(D.rc_seq, l && l.rc_at != null ? l.rc_at + 0.05 : 0));
   status(r === "ok" ? "Back in the rough cut" : "Couldn't find the rough cut sequence");
 });
+$("openNew").addEventListener("click", async () => { const r = await ev(jumpJS(D.rc_seq, 0)); status(r === "ok" ? "Opened the current rough cut" : "Couldn't find it"); });
 $("reload").addEventListener("click", () => { load(); status("Reloaded"); });
 $("pickLine").addEventListener("change", e => e.target.value && show(e.target.value, null));
 // follow Premiere: the selected clip (or the playhead) picks the line shown here. The sound clip's FILE names the
 // take, so a take you dragged from the scrub into the rough cut by hand is still recognised after you move things.
-const SEL = `(function(){var q=app.project.activeSequence;if(!q)return "";var s=q.getSelection(),t=-1,nm="";
-  for(var i=0;i<s.length;i++)if(s[i].start){if(t<0)t=s[i].start.seconds+0.05;if(s[i].mediaType=="Audio"&&s[i].projectItem&&!nm)nm=s[i].projectItem.name;}
-  if(t<0)t=q.getPlayerPosition().seconds;
-  if(!nm){var c=q.audioTracks[0].clips;for(var k=0;k<c.numItems;k++)if(c[k].start.seconds<=t&&t<c[k].end.seconds&&c[k].projectItem){nm=c[k].projectItem.name;break;}}
-  return q.name+"|"+t+"|"+nm;})()`;
+// follow Premiere. The PLAYHEAD wins whenever it moves (playing, scrubbing, jumping); a clip you click wins when the
+// selection changes. The sound clip's FILE names the take, so it works in any sequence: a take you dragged in by hand,
+// or the old copy kept in Sequences/Old.
+const SEL = `(function(){var q=app.project.activeSequence;if(!q)return "";var s=q.getSelection(),st=-1,sn="";
+  for(var i=0;i<s.length;i++)if(s[i].start){if(st<0)st=s[i].start.seconds+0.05;if(s[i].mediaType=="Audio"&&s[i].projectItem&&!sn)sn=s[i].projectItem.name;}
+  var p=q.getPlayerPosition().seconds,pn="";
+  for(var a=0;a<q.audioTracks.numTracks&&!pn;a++){var c=q.audioTracks[a].clips;for(var k=0;k<c.numItems;k++)if(c[k].start.seconds<=p&&p<c[k].end.seconds&&c[k].projectItem&&/\.wav$/i.test(c[k].projectItem.name)&&!/^roomtone/.test(c[k].projectItem.name)){pn=c[k].projectItem.name;break;}}
+  return [q.name,p,pn,st,sn].join("|");})()`;
 function whereIs(seq, t, nm){
   const f = D.files && D.files[nm]; if (f) return { line: f[0], take: f[1] };
   if (seq === D.rc_seq) { const l = D.lines.find(x => x.rc_at != null && x.rc_at <= t && t < x.rc_at + x.rc_dur); return l ? { line: l.id, take: null } : null; }
   if (seq === D.scrub_seq) for (const l of D.lines) { const tk = l.takes.find(x => x.scrub_at <= t && t < x.scrub_at + x.dur); if (tk) return { line: l.id, take: tk.take }; }
   return null;
 }
+let lastPH = null, lastSel = "", lastSeq = "";
 async function poll(){
-  if (D) {
-    if (++tick % 4 === 0) {   // a rebuild rewrote the data: reload by itself
-      const s = await ev(`(function(){var f=new File("~/.shown/takefinder.json");return f.exists?String(f.modified.getTime()):"";})()`);
-      if (s && stamp && s !== stamp) { await load(); status("Rough cut rebuilt. Panel updated."); }
-    }
-    const r = await ev(SEL); const [seq, ts, nm] = String(r).split("|"); const t = parseFloat(ts);
-    const key = seq + "|" + (isNaN(t) ? "" : t.toFixed(1)) + "|" + nm;
-    if (key !== lastKey && !isNaN(t)) {
-      lastKey = key;
-      const w = whereIs(seq, t, nm);
+  try {
+    if (D) {
+      if (++tick % 4 === 0) {   // a rebuild rewrote the data: reload by itself
+        const s = await ev(`(function(){var f=new File("~/.shown/takefinder.json");return f.exists?String(f.modified.getTime()):"";})()`);
+        if (s && stamp && s !== stamp) { await load(); status("Rough cut rebuilt. Panel updated."); }
+      }
+      const r = String(await ev(SEL)); const [seq, ps, pn, ss, sn] = r.split("|"); const ph = parseFloat(ps), st = parseFloat(ss);
+      if (seq && seq !== lastSeq) { lastSeq = seq; $("old").style.display = /\(before your last swap\)/.test(seq) ? "block" : "none"; }
+      let w = null;
+      const selKey = seq + "|" + ss + "|" + sn;
+      if (!isNaN(ph) && (lastPH === null || Math.abs(ph - lastPH) > 0.04)) { lastPH = ph; w = whereIs(seq, ph, pn); }
+      else if (selKey !== lastSel && !isNaN(st)) { w = whereIs(seq, st, sn); }
+      lastSel = selKey;
       if (w && (w.line !== current || w.take !== here)) show(w.line, w.take);
     }
-  }
-  setTimeout(poll, 800);
+  } catch (e) { status("Tracking hiccup: " + e.message); }
+  setTimeout(poll, 500);
 }
 load(); poll();
 })();

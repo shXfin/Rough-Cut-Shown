@@ -2,7 +2,7 @@
 # rebuild_rc.sh work_dir Client   -> the rough cut rebuilt with your Take Finder choices, back in Premiere
 # Run by "Rebuild rough cut" in the Take Finder panel (through <work>/Rebuild rough cut.command). Keeps the scrub as is.
 set -e
-W="$1"; C="${2:-Notch}"; c=$(echo "$C" | tr '[:upper:]' '[:lower:]'); CU=$(echo "$C" | tr '[:lower:]' '[:upper:]')
+W="$1"; C="${2:?usage: rebuild_rc.sh work_dir ProjectName}"; c=$(echo "$C" | tr '[:upper:]' '[:lower:]'); CU=$(echo "$C" | tr '[:lower:]' '[:upper:]')
 T="$(cd "$(dirname "$0")" && pwd)"; PY=/Volumes/T7/work/whisperx-env/bin/python
 export PATH=/Volumes/T7/work/irl-retrenchment/_tools:$PATH
 RCSEQ="$CU REVIEW 1 - Rough cut (picked takes)"; SCSEQ="$CU REVIEW 2 - Scrub (every take, A and B side by side)"
