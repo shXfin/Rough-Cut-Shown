@@ -46,7 +46,8 @@ BAKE = os.environ.get("BAKE") == "1"   # clean each piece (Mateus: noise, hum, s
 VO = os.path.abspath(os.path.join(W, "vo_RC" if RC else (f"vo_line_{os.environ['LINE']}" if os.environ.get("LINE") else "vo_SCRUB"))); 
 CLEAN = ("highpass=f=90:poles=2,highpass=f=90:poles=2,"                 # wind and rumble: steep 24 dB/oct under the voice
          "equalizer=f=60:t=q:w=10:g=-18,equalizer=f=120:t=q:w=10:g=-10,equalizer=f=180:t=q:w=10:g=-6,"   # 60 Hz hum (US mains)
-         "afftdn=nr=10:nf=-45:tn=1,"                                            # gentle broadband noise: never watery
+         # no broadband noise reduction: afftdn ate the quiet 5-10 kHz "air" (8-10 dB on Notch Founder 2) and made
+         # him sound under water. Outdoor lavs here sit 35 dB over the noise; the room tone bed covers the rest.
          "equalizer=f=250:t=q:w=1.2:g=-2,equalizer=f=4500:t=q:w=1.5:g=1.5,"      # less boxy lav, a touch of presence
          "deesser=i=0.25:m=0.5:f=0.5,"                                          # soft de-ess (the presence lift adds s)
          "acompressor=threshold=-26dB:ratio=2:attack=20:release=250:knee=6")     # light glue, keeps it natural
@@ -70,10 +71,16 @@ CHAN = {}; GAINS = []
 import time, glob as _g
 STAMP = time.strftime("%H%M%S")   # new names every build: reusing a name left Premiere drawing the old (or no) waveform
 # old pieces stay on disk: the sequence open in Premiere still points at them (deleting them sent it offline)
+import matcheq
+_ref = []
+def EQREF():
+    if not _ref: _ref.append(matcheq.project_ref(W, SRC, lambda w, a, d: best_channel(w, a, d)[0]))
+    return _ref[0]
 def bake(wav, s0, s1, n, fin=0.012, fout=0.012):
     os.makedirs(VO, exist_ok=True); out = os.path.join(VO, f"{'rc' if RC else 'take'}_{STAMP}_{n:03d}.wav"); d = s1 - s0
     ch, lv = best_channel(wav, s0, d); CHAN[n] = (ch + 1, [round(x, 1) for x in lv])
-    af = f"pan=mono|c0=c{ch}," + CLEAN
+    shape = matcheq.ltas(matcheq.load(wav, s0, d, ch))   # this piece's tone, matched to the project's middle
+    af = f"pan=mono|c0=c{ch}," + CLEAN.replace("equalizer=f=250", matcheq.eq_for(shape, EQREF()) + "equalizer=f=250", 1)
     tmp = out + ".tmp.wav"
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{s0:.3f}", "-t", f"{d:.3f}", "-i", wav, "-af", af, "-ar", "48000", "-c:a", "pcm_f32le", tmp], check=True)
     o = subprocess.run(["ffmpeg", "-hide_banner", "-i", tmp, "-af", "ebur128", "-f", "null", "-"], capture_output=True, text=True).stderr

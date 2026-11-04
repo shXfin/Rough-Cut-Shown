@@ -214,3 +214,12 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
     is recognised by the panel (by file, not by time) and learn_swaps.py keeps it on the next rebuild.
   - A rebuild redoes the whole rough cut sequence: hand trims and extra edits in it don't carry over (they stay in
     the backup). Make take choices first, fine edits after.
+
+## Muffled lav and "under water" sound (Notch, 2026-11-05)
+- Founder 2's lav was buried under his jacket: 8-12 dB less 2-10 kHz than Founder 1 from Line 13 on (the editor's
+  cut has the same dullness). Our afftdn noise reduction then ate another 8-10 dB of the quiet air on top: under water.
+- Fix: no broadband noise reduction (outdoor lavs sit ~35 dB over the noise; the room tone bed covers it), plus
+  matcheq.py: every piece's speech spectrum pulled 80% toward the clearer half of the project's pieces (boost up to
+  9 dB, cut 3 dB at most, smoothed, no rumble added). Spread in clarity across pieces went from 30 dB to ~15 dB,
+  hiss in pauses stays ~40 dB under the voice. Measure, never assume: compare each piece to its raw channel.
+- Don't use the median of ALL pieces as the target: the speaker with most lines (the muffled one) drags it down.
