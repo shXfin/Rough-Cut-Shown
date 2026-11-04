@@ -273,3 +273,13 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - Never link Premiere to originals on a cloud mount (Aspect's "Home Project" streams through 127.0.0.1): Premiere
   reads them in the background (audio conform, thumbnails) even with proxies on, and a 16 GB Mac swaps until every
   sequence stutters. Copy only the used ranges + handles to a local drive first (Notch: 24 GB instead of 167 GB).
+
+## Eyeline: founders looking off camera (Notch, 2026-11-05, from Shafin)
+- In most takes of the opening (Lines 1 and 2) the founders glance away from the lens. The editor's cut (Notch Rough
+  Cut V2) used the one continuous take where both hold the lens (MixPre-012 at 18.2 s, A cam 7T0A9128 at 16.5 s,
+  Lines 1-3 with no performance cut). Sound alone can't see this: it picked a take where they look elsewhere.
+- Until vision is in: when an editor's reference cut exists, match its takes by sound (cross-correlate its audio with
+  every recording: 0.50+ is a hit, others sit near 0.1) and offer those takes first.
+- Next (vision, Gemini via Melius): score every take for eyeline (looking at lens vs away), blinks on key words, and
+  hand/face moments, and make it part of pick.py's ranking. A continuous take where both founders hold the lens beats
+  stitched "best" lines.
