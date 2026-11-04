@@ -40,7 +40,7 @@ select{width:100%;margin-top:8px;background:#1b1b1b;color:var(--ink);border:1px 
 </head>
 <body>
 <header>
-  <div class="row"><h1>Take Finder</h1><button id="back">Back to rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
+  <div class="row"><h1>Take Finder <small id="ver" style="color:#777;font-weight:500">v3</small></h1><button id="back">Back to rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
   <select id="pickLine"></select>
   <div id="status"></div>
 </header>
@@ -48,17 +48,27 @@ select{width:100%;margin-top:8px;background:#1b1b1b;color:var(--ink);border:1px 
 <div id="hint">Click any clip in the rough cut or the scrub. Its other takes show up here.</div>
 <div id="takes"></div>
 <script>
+// any error shows on the panel itself, so a silent failure can't hide again
+window.onerror = function(m, u, l){ var h = document.getElementById("hint"); h.style.display = "block"; h.style.color = "#ff6b5c";
+  h.textContent = "Panel error: " + m + " (line " + l + ")"; };
+</script>
+<script>
 const cep = window.__adobe_cep__;
 // the data file is read through Premiere's own scripting (File): Node's require isn't available in every Premiere
 const READ = `(function(){var f=new File("~/.shown/takefinder.json");if(!f.exists)return "";f.encoding="UTF-8";f.open("r");var s=f.read();f.close();return s;})()`;
 let D = null, current = null, lastKey = "";
 const $ = id => document.getElementById(id);
-const ev = src => new Promise(r => cep.evalScript(src, r));
+const ev = src => new Promise(r => { if (!cep) { r("__nocep"); return; } cep.evalScript(src, r); setTimeout(() => r("__timeout"), 8000); });
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function status(m){ $("status").textContent = m; clearTimeout(status.t); status.t = setTimeout(() => $("status").textContent = "", 4000); }
 async function load(){
+  $("hint").textContent = "Loading takes...";
   const raw = await ev(READ);
-  try { D = JSON.parse(raw); } catch (e) { $("hint").textContent = "No take data yet. Ask Claude to build the scrub first."; return; }
+  try { D = JSON.parse(raw); } catch (e) {
+    $("hint").style.color = "#ff6b5c";
+    $("hint").textContent = raw === "" ? "No take data yet. Ask Claude to build the scrub first."
+      : "Couldn't load takes: " + String(raw).slice(0, 120); return; }
+  $("hint").style.color = ""; $("hint").textContent = "Click any clip in the rough cut or the scrub. Its other takes show up here.";
   $("pickLine").innerHTML = '<option value="">Browse a line...</option>' + D.lines.map(l =>
     `<option value="${l.id}">Line ${l.num}: ${esc(l.text.slice(0, 60))}</option>`).join("");
   if (current) show(current, null);

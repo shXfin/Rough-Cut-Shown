@@ -10,7 +10,9 @@ RC = len(sys.argv) > 3 and sys.argv[3] == "--rough-cut"   # rough cut: only the 
 J = lambda n: json.load(open(os.path.join(W, n)))
 LINES = {l["line"]: l for l in J("lines.json")}
 TAKES = J("takes.json")
-GRID = os.environ.get("GRID") == "1"   # multicam review: every camera on (ppro_grid.py then tiles them side by side)
+# the scrub is ALWAYS multicam (Shafin: one scrub, eagle eye on every camera): every camera on, then ppro_grid.py
+# tiles them side by side. GRID=0 builds a single-camera scrub; the rough cut and per-line builds stay single-camera.
+GRID = os.environ.get("GRID", "1") == "1" and not RC and not os.environ.get("LINE")
 SRC = {os.path.basename(p): p for p in J("sources.json")}
 FPS = 24000/1001; fr = lambda s: int(round(s * FPS))
 GAP_TAKE, GAP_LINE, HANDLE = 1.0, 3.0, 0.5
