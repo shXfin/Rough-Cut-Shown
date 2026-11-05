@@ -283,3 +283,13 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - Next (vision, Gemini via Melius): score every take for eyeline (looking at lens vs away), blinks on key words, and
   hand/face moments, and make it part of pick.py's ranking. A continuous take where both founders hold the lens beats
   stitched "best" lines.
+
+## Vision: eyeline on every take, and Sam's 3-take scrub (Notch, 2026-11-05)
+- eyeline.py (MediaPipe Face Landmarker, local, 478 points with irises): samples the A cam at 4 fps while the line is
+  spoken, zooms into the head area (medium shots are too small for the model at proxy size: 0 faces found until then),
+  keeps the N largest faces (PEOPLE=2), measures head turn + iris direction, and scores the share of the line where
+  EVERY founder looks at the lens. Calibrate per project on a take confirmed good (--calibrate SRC:START:END).
+- Checked by eye: 0% takes really look away (head down, eyes off to the side); 80-100% takes hold the lens.
+- top3.py: the best 3 takes per line on sound rank + eyeline (weight 45); eyeline under 70% only fills a line with
+  nothing better, and is flagged LOOKING AWAY. KEEP=top3.json builds the scrub from just those (Sam: 3, not 16-19).
+- Next: Gemini (via Melius) for what landmarks can't judge: expression, energy, a smile on the wrong word.

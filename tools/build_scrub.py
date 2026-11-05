@@ -186,6 +186,9 @@ def tc(x):
     f = int(round(x * FPS)); return f"{f // (24*3600):02d}:{f // (24*60) % 60:02d}:{f // 24 % 60:02d}:{f % 24:02d}"
 ONLY = os.environ.get("LINE")   # takes-by-line: one short sequence per script line, every take of it back to back
 if ONLY: by_line = {ONLY: by_line.get(ONLY, [])}
+if os.environ.get("KEEP"):   # top3.json: only the chosen takes per line (Sam: 3 best takes, not 16-19)
+    _k = json.load(open(os.environ["KEEP"]))
+    by_line = {L: [t for t in ts if any(t["take"] == k["take"] and t["src"] == k["src"] for k in _k.get(L, []))] for L, ts in by_line.items()}
 # your choices from Premiere and the Take Finder (overrides.json): takes, trims, lines you deleted
 _ovp = os.path.join(W, "overrides.json"); OVR = json.load(open(_ovp)) if os.path.exists(_ovp) else {}
 PICKS = {}
