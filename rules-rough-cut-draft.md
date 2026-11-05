@@ -293,3 +293,6 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - top3.py: the best 3 takes per line on sound rank + eyeline (weight 45); eyeline under 70% only fills a line with
   nothing better, and is flagged LOOKING AWAY. KEEP=top3.json builds the scrub from just those (Sam: 3, not 16-19).
 - Next: Gemini (via Melius) for what landmarks can't judge: expression, energy, a smile on the wrong word.
+- Eyeline is judged on the MAIN camera(s) only (Notch: A cam, the close shot; the wide B cam faces are too small).
+  Per project: list which cameras count (EYE_CAMS, default the top/main one); with several close cameras, score each
+  and a take passes if the camera you'd cut to has everyone on lens.
