@@ -317,3 +317,8 @@ Scrub
 Vision
 - MediaPipe on every take (free): head turns, extra faces. Gemini (Melius) only on unsure takes, sent as short snippets
   joined into one clip (17 s = 20 credits). If MediaPipe, Gemini and a frame check disagree, flag for the editor.
+
+## Progress board (2026-11-07)
+- Every project run gets a live board in a terminal tab: `python3 tools/progress.py <project_dir> <A cam folder> <B cam folder>`.
+  It counts the files each step writes (audio pulled, transcripts, sync, takes, scrub, proxies), refreshes every 5 s,
+  and closing it stops nothing. Start it at the beginning of every run so the editor never has to ask for status.
