@@ -322,3 +322,15 @@ Vision
 - Every project run gets a live board in a terminal tab: `python3 tools/progress.py <project_dir> <A cam folder> <B cam folder>`.
   It counts the files each step writes (audio pulled, transcripts, sync, takes, scrub, proxies), refreshes every 5 s,
   and closing it stops nothing. Start it at the beginning of every run so the editor never has to ask for status.
+
+## Lessons from Concurrence ingest (2026-11-07)
+- **Canon RAW (.CRM, 7K):** proxies are slow (Media Encoder's RAW decoder, ~1.5-1.9 GB/min, ~5 h for 550 GB), so
+  NEVER wait on them. The audio is readable straight from the CRM with ffmpeg in seconds per file; Concurrence's
+  A cam carries 4 mono tracks and only tracks 3 and 4 have sound (`-filter_complex [0:a:2][0:a:3]amerge`).
+  Pull audio while the encoder is PAUSED: two readers on one USB drive drop both to ~33 MB/s.
+- Proxies carry the camera audio too, so a clip whose proxy is done needs no separate audio pull.
+- Build the scrub on the camera originals; attach proxies afterwards (`attachProxy`), they play once encoded.
+- **No slates:** if no recorder file has a spoken slate, scrub.py now treats every file as in-section (was: 0 takes).
+- A recorder that runs for an hour (Wireless PRO) makes recorder-level coverage look low; judge camera coverage per
+  TAKE, not per recorder file.
+- Shooting script check worked again: the Drive doc held 6 versions; the recorder matched "Teleprompter v2".

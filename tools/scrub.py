@@ -35,6 +35,8 @@ for f in sorted(glob.glob(os.path.join(WDIR, "*.words.json"))):
     cur = next((name for name, rx in SLATE if re.search(rx, head)), cur); section[src] = cur
     for w in ws:
         words.append(dict(w, src=src))
+if all(v is None for v in section.values()):   # no spoken slates anywhere (Concurrence): every file is fair game
+    section = {k: "all" for k in section}
 print(json.dumps(section))
 
 def find_takes(line, min_score=70):

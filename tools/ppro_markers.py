@@ -10,7 +10,8 @@ PJ = (os.environ.get("PROJECT") or os.path.basename(os.path.dirname(os.path.absp
 BR = os.path.expanduser("~/.claude-adobe-bridge/bin/adobe-bridge")
 LINES = {l["line"]: l for l in json.load(open(os.path.join(W, "lines.json")))}
 SC = json.load(open(os.path.join(W, os.environ.get("SCRUB_REPORT", f"{PJ}_SCRUB_grid.takes.json"))))
-RC = {r["line"]: r for r in json.load(open(os.path.join(W, os.environ.get("RC_REPORT", f"{PJ}_RC_clean.takes.json"))))}
+_rcp = os.path.join(W, os.environ.get("RC_REPORT", f"{PJ}_RC_clean.takes.json"))
+RC = {r["line"]: r for r in json.load(open(_rcp))} if os.path.exists(_rcp) else {}   # scrub before any rough cut: no picks to tag yet
 groups, order = {}, []
 for r in SC:
     if r["line"] not in groups: groups[r["line"]] = []; order.append(r["line"])
