@@ -296,3 +296,24 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - Eyeline is judged on the MAIN camera(s) only (Notch: A cam, the close shot; the wide B cam faces are too small).
   Per project: list which cameras count (EYE_CAMS, default the top/main one); with several close cameras, score each
   and a take passes if the camera you'd cut to has everyone on lens.
+
+## Lessons from review round 2 (2026-11-06)
+Audio
+- Never let a voice ride the limiter: gain to target, gentle compressor (3:1, -22 dB), then MEASURE AGAIN and re-gain,
+  limiter last at -3 dB. A reviewer hears limiter slamming as "clipping at 0 dB" even when the source is clean.
+- Every sound file Premiere gets is STEREO (dual mono). A mono file plays on the left only.
+- Ticks (4-12 kHz, regular) and wind gusts are fixed per band, never with a broad cut (no muffle).
+- After building, scan the full export in 5 s windows: level, peaks, wind, brightness/esses, noisy pauses. Fix only flagged pieces.
+- Any outside audio (ElevenLabs isolator etc.) must be sync-checked: rebuild the synced lav from the timeline clip list and
+  cross-correlate against the export. Calibrate on a lav-only section first (export adds ~20 ms). Slip > 40 ms = fix.
+Picture
+- Proxies tagged full-range (yuvj, "pc") look flatter and cooler than the 4K in Premiere with the same grade.
+  Measure both renders on the same frame and offset the proxy grade (Notch: Sat +30, Temp +4, Blacks -6).
+- B cam (log) gets its own grade matched to A on shared content (grass, sky), not a copy of A.
+Scrub
+- A scrub clip starts 1-7 s BEFORE the spoken line. Check for slate/crew from the clip's in-point, not the line start.
+  If crew is still in frame when speech starts, swap the take (trimming would cut the first word).
+- When the picker's inputs drift, don't re-run it on a reviewed scrub: patch only the bad takes.
+Vision
+- MediaPipe on every take (free): head turns, extra faces. Gemini (Melius) only on unsure takes, sent as short snippets
+  joined into one clip (17 s = 20 credits). If MediaPipe, Gemini and a frame check disagree, flag for the editor.

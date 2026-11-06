@@ -6,6 +6,15 @@ PJ = (os.environ.get("PROJECT") or os.path.basename(os.path.dirname(os.path.absp
 TH = os.path.join(W, "finder", "thumbs"); os.makedirs(TH, exist_ok=True)
 LINES = {l["line"]: l for l in json.load(open(os.path.join(W, "lines.json")))}
 SCRUB = json.load(open(os.path.join(W, os.environ.get("SCRUB_REPORT", f"{PJ}_SCRUB_grid.takes.json"))))
+# every scrub of the project (work/scrubs.json: [{seq, report, xml}], the full one first). Each take carries where it
+# sits in EACH scrub, so the panel can jump to and follow any of them (Sam's 3-take scrub, the full one, the next one).
+_reg = os.path.join(W, "scrubs.json")
+SCRUBS = json.load(open(_reg)) if os.path.exists(_reg) else [dict(seq=f"{CLIENT.upper()} REVIEW 2 - Scrub (every take, A and B side by side)", report=f"{PJ}_SCRUB_grid.takes.json", xml=f"{PJ}_SCRUB_grid.xml")]
+AT = {}   # (line, take, src) -> {scrub seq: second}
+for sc in SCRUBS:
+    rp = os.path.join(W, sc["report"])
+    if os.path.exists(rp):
+        for r in json.load(open(rp)): AT.setdefault((r["line"], r["take"], r["src"]), {})[sc["seq"]] = r["at"]
 # sound checks come straight from takes.json, so a newer check shows up without rebuilding the scrub
 TK = {(t["line"], t["take"], t["src"]): t for t in json.load(open(os.path.join(W, "takes.json")))}
 RC = {r["line"]: r for r in json.load(open(os.path.join(W, os.environ.get("RC_REPORT", f"{PJ}_RC_clean.takes.json"))))}
@@ -30,7 +39,7 @@ for L, ln in LINES.items():
     takes = []
     for r in (x for x in SCRUB if x["line"] == L):
         p = RC.get(L)
-        takes.append(dict(take=r["take"], of=r["of"], scrub_at=r["at"], dur=r["dur"], text=r.get("text", ""),
+        takes.append(dict(take=r["take"], of=r["of"], scrub_at=r["at"], at=AT.get((L, r["take"], r["src"]), {}), dur=r["dur"], text=r.get("text", ""),
                           feed=bool(r.get("feed") or TK.get((L, r["take"], r["src"]), {}).get("part_feed")),
                           part_feed=TK.get((L, r["take"], r["src"]), {}).get("part_feed", ""), wind=(r.get("wind") or -99) > 12, cams=r.get("cams", ""), src=r["src"],
                           picked=bool(p and p["take"] == r["take"] and p["src"] == r["src"]),
@@ -48,7 +57,8 @@ except Exception: _old_files = {}
 data = dict(client=CLIENT, rc_seq=os.environ.get("RC_SEQ", f"{CLIENT.upper()} REVIEW 1 - Rough cut (picked takes)"),
             scrub_seq=os.environ.get("SCRUB_SEQ", f"{CLIENT.upper()} REVIEW 2 - Scrub (every take, A and B side by side)"), lines=lines,
             work=W, built=__import__("time").strftime("%H:%M"),
-            files={**_old_files, **pieces(os.path.join(W, os.environ.get("SCRUB_XML", f"{PJ}_SCRUB_grid.xml")), SCRUB),
+            scrubs=[sc["seq"] for sc in SCRUBS],
+            files={**_old_files, **{k: v for sc in SCRUBS[1:] for k, v in pieces(os.path.join(W, sc["xml"]), json.load(open(os.path.join(W, sc["report"])))).items()}, **pieces(os.path.join(W, os.environ.get("SCRUB_XML", f"{PJ}_SCRUB_grid.xml")), SCRUB),
                    **pieces(os.path.join(W, os.environ.get("RC_XML", f"{PJ}_RC_clean.xml")), list(RC.values()))})
 json.dump(data, open(os.path.join(cfg, "takefinder.json"), "w"), indent=1)
 print(f"Take Finder data: {len(lines)} lines, {len(data['files'])} named pieces -> ~/.shown/takefinder.json")

@@ -70,14 +70,34 @@ def on_lens(f):   # every calibrated person found and within tolerance
         if abs(p[1] - c["yaw"]) > YAW_TOL or abs(p[2] - c["pitch"]) > PITCH_TOL: return False
     return True
 takes = json.load(open(os.path.join(W, "takes.json"))); out = {}
+# PER CAMERA FILE calibration: the camera gets re-framed during a shoot (Notch 7T0A9130 sits wider than the opening),
+# which moves where "looking at the lens" lands. Each file's own median look per person is its lens; a take is scored
+# against the file it was shot on. A file's median works because founders look at the lens most of the time.
 only = sys.argv[2:] and [x for x in sys.argv[2:] if x.startswith("L")]
-for i, t in enumerate(takes):
+raw = {}
+for t in takes:
     if only and t["line"] not in only: continue
-    L = take_looks(t["src"], t["start"], t["end"])
-    key = f'{t["line"]}|{t["take"]}|{t["src"]}'
-    if not L: out[key] = dict(score=None, why="no A cam"); continue
-    ok = [on_lens(f) for f in L]; found = [len(f) for f in L]
-    out[key] = dict(score=round(float(np.mean(ok)), 3), frames=len(L), faces=round(float(np.mean(found)), 2))
-    print(f'{t["line"]} take {t["take"]:>2}: on lens {out[key]["score"]*100:5.1f}% of {len(L)} frames', flush=True)
+    path, ca = cam_for(t["src"], t["start"], t["end"])
+    if not path: raw[f'{t["line"]}|{t["take"]}|{t["src"]}'] = (None, None); continue
+    raw[f'{t["line"]}|{t["take"]}|{t["src"]}'] = (path, [looks(f) for f in frames(path, ca, ca + (t["end"] - t["start"]))])
+by_file = {}
+for k, (path, L) in raw.items():
+    if L: by_file.setdefault(path, []).extend(f for f in L if len(f) == MAXP)
+CAL = {}
+for path, fs in by_file.items():
+    if len(fs) >= 8: CAL[path] = [dict(x=float(np.median([f[i][0] for f in fs])), yaw=float(np.median([f[i][1] for f in fs])), pitch=float(np.median([f[i][2] for f in fs]))) for i in range(MAXP)]
+def on_file(f, path):
+    c_ = CAL.get(path) or cal
+    if len(f) < len(c_): return False
+    for c in c_:
+        p = min(f, key=lambda p: abs(p[0] - c["x"]))
+        if abs(p[1] - c["yaw"]) > YAW_TOL or abs(p[2] - c["pitch"]) > PITCH_TOL: return False
+    return True
+for k, (path, L) in raw.items():
+    if not L: out[k] = dict(score=None, why="no A cam"); continue
+    ok = [on_file(f, path) for f in L]
+    out[k] = dict(score=round(float(np.mean(ok)), 3), frames=len(L), file=os.path.basename(path))
+    print(k.replace("|", " take ", 1).split("|")[0], f'on lens {out[k]["score"]*100:5.1f}%', flush=True)
 P = os.path.join(W, "eyeline.json"); prev = json.load(open(P)) if os.path.exists(P) else {}
 prev.update(out); json.dump(prev, open(P, "w"), indent=1)
+json.dump({os.path.basename(k): v for k, v in CAL.items()}, open(os.path.join(W, "eyeline_calib_files.json"), "w"), indent=1)

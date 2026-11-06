@@ -38,5 +38,5 @@ def eq_for(shape, ref):
     # a lav buried under clothing has little top end left to boost: EQ alone stops ~5 dB short (Notch L16).
     # A light harmonic exciter above 3.5 kHz rebuilds it, scaled by how dull the piece is; clear pieces get none.
     deficit = float((ref - shape)[C >= 2000].mean())
-    if deficit > 8: out += f"aexciter=amount={min(2.0, (deficit - 6) / 4):.2f}:drive=6:blend=0:freq=3500:ceil=12000,"
+    if False and deficit > 8: out += f"aexciter=amount={min(2.0, (deficit - 6) / 4):.2f}:drive=6:blend=0:freq=3500:ceil=12000,"
     return out

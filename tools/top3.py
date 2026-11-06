@@ -7,10 +7,16 @@ W = os.path.abspath(sys.argv[1]); N = int(sys.argv[2]) if len(sys.argv) > 2 else
 EYE_W, EYE_MIN = 45.0, 0.7
 T = json.load(open(os.path.join(W, "takes.json"))); E = json.load(open(os.path.join(W, "eyeline.json")))
 LINES = {l["line"]: l for l in json.load(open(os.path.join(W, "lines.json")))}
+G = {}   # Gemini (Melius) eyeline per take beats MediaPipe where we have it: it sees eye-only glances and rehearsal/crew moments
+import glob
+for g in glob.glob(os.path.join(W, "gemini_eyeline_*.json")):
+    for k, v in json.load(open(g))["takes"].items(): G[k] = v["eye"] / 100
 by = {}
 for t in T:
     if t.get("rank", 0) < -500: continue   # cameraman reading it, no voice
+    if t.get("part_feed") or t.get("off_mic"): continue   # crew feeding the line / founder off mic: never a review take
     e = E.get(f'{t["line"]}|{t["take"]}|{t["src"]}', {}).get("score")
+    e = G.get(f'{t["line"]}|{t["take"]}', e)
     t["_eye"] = e; t["_score"] = t.get("rank", 0) + EYE_W * (e if e is not None else 0.5)
     by.setdefault(t["line"], []).append(t)
 out, txt = {}, []

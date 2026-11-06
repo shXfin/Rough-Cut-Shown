@@ -13,7 +13,7 @@ def _read(path, af=None):
 def _ramp(g, n):   # smooth a per-window gain curve to samples, with ~40 ms ramps
     k = int(0.04 * SR); x = np.repeat(g, n)
     return np.convolve(x, np.ones(k) / k, "same")
-def dewind(path, out, over_db=7.0, depth=0.75):
+def dewind(path, out, over_db=4.0, depth=0.9):   # v4: Mateus still heard wind at 7/0.75
     # a gust = the band under ~350 Hz jumping while the voice band (0.8-3 kHz) does not (Notch L30 at 1.3 s: low +14 dB,
     # voice +4). Measured against the piece's own usual balance, since male voices also live at 100-300 Hz.
     x = _read(path); hi = _read(path, "highpass=f=350:poles=2,highpass=f=350:poles=2")
@@ -79,3 +79,24 @@ def deknock(path, out, jump_db=15.0, max_len=0.2):
     y = x.copy(); y[:len(gs)] *= gs
     y.astype(np.float32).tofile(out + ".raw"); _write(out + ".raw", out)
     return fixed
+def detick(path, out, lo=4000, hi=12000, jump_db=7.0, max_ms=30, depth_db=-14.0):
+    """Ticks (Notch: one every 0.205 s at 4-12 kHz on both lavs, insects or a device) are short spikes in the top band.
+    For each 5 ms window where that band jumps jump_db over its local median for under max_ms, only that band is turned
+    down depth_db; sibilants last longer than max_ms and are left alone, the rest of the voice is untouched."""
+    x = _read(path); band = _read(path, f"highpass=f={lo}:poles=2,lowpass=f={hi}:poles=2"); m = min(len(x), len(band)); x, band = x[:m], band[:m]
+    n = int(0.005 * SR); w = m // n
+    if w < 40: return 0
+    e = 20 * np.log10(np.sqrt((band[:w * n].reshape(w, n) ** 2).mean(1)) + 1e-9)
+    med = np.array([np.median(e[max(0, i - 40):i + 40]) for i in range(w)])
+    hot = e - med > jump_db; g = np.zeros(w); i = 0; k = 0
+    while i < w:
+        if hot[i]:
+            j = i
+            while j < w and hot[j]: j += 1
+            if (j - i) * 5 <= max_ms: g[max(0, i - 1):j + 1] = 1; k += 1
+            i = j
+        else: i += 1
+    gs = _ramp(g, n); gs = np.pad(gs, (0, m - len(gs)), "edge")[:m]
+    y = x - (1 - 10 ** (depth_db / 20)) * gs * band
+    y.astype(np.float32).tofile(out + ".raw"); _write(out + ".raw", out)
+    return k
