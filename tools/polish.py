@@ -100,7 +100,7 @@ def detick(path, out, lo=4000, hi=12000, jump_db=7.0, max_ms=30, depth_db=-14.0)
     y = x - (1 - 10 ** (depth_db / 20)) * gs * band
     y.astype(np.float32).tofile(out + ".raw"); _write(out + ".raw", out)
     return k
-def unmuffle(path, out, max_db=10.0, smooth_s=0.25):
+def unmuffle(path, out, max_db=8.0, smooth_s=0.3):
     """A lav under a sweater goes dull for a second or two whenever the talent turns or leans (Concurrence L24 1:35:
     the 3-8 kHz band fell 10-15 dB under the voice body while the A cam mic stayed bright, so it was the lav, not the
     chain). A fixed EQ can't follow that. Per 21 ms frame, the top bands are measured against the voice body (200 Hz-1 kHz)
@@ -124,6 +124,7 @@ def unmuffle(path, out, max_db=10.0, smooth_s=0.25):
         d = np.clip(ref - tilt, 0, max_db) * speech
         d = np.convolve(d, win, "same"); s = np.convolve(speech.astype(float), win, "same")
         gain_db[i] = np.where(s > 0.05, d / np.maximum(s, 1e-3) * np.minimum(1, s * 2), 0)   # mean over the talking frames only
+        gain_db[i] *= np.clip((ref - tilt) / 3, 0, 1)   # never lift a frame that is already bright: the s, t, sh sounds (Concurrence 'updates', 'arthritis' went grainy)
     cen = np.array([np.sqrt(a * b) for a, b in bands])
     G = np.zeros_like(P)
     for j in range(len(t)):
@@ -133,3 +134,26 @@ def unmuffle(path, out, max_db=10.0, smooth_s=0.25):
     return float(np.mean(gain_db[1][speech]))
 def _copy(a, b):
     import shutil; shutil.copyfile(a, b)
+def desibilance(path, out, over_db=13.0, max_cut=10.0):
+    """After the top end is lifted on a dull lav (match EQ + unmuffle), the s/t/sh sounds come up with it and turn harsh
+    and grainy (Concurrence L25 'updates', L39 'arthritis', 'this': 4.5-12 kHz 10 dB over the raw lav). Per 10 ms frame the
+    4.5-12 kHz band is measured against the voice body; frames more than over_db above the piece's usual vowel balance
+    get only that band pulled down, by the excess, smoothed over 15 ms. Vowels and the lift elsewhere are untouched."""
+    from scipy.signal import stft, istft
+    x = _read(path); nper = 512
+    if len(x) < nper * 8: _copy(path, out); return 0.0
+    f, t, Z = stft(x, SR, nperseg=nper, noverlap=nper // 2)
+    P = np.abs(Z) ** 2 + 1e-14
+    body = P[(f >= 200) & (f < 2500)].sum(0); sib = P[(f >= 4500) & (f < 12000)].sum(0)
+    lvl = 10 * np.log10(body + sib); talk = lvl > np.percentile(lvl, 90) - 30
+    if talk.sum() < 10: _copy(path, out); return 0.0
+    tilt = 10 * np.log10(sib / body)
+    voiced = talk & (10 * np.log10(body) > np.percentile(10 * np.log10(body[talk]), 40))
+    ref = np.median(tilt[voiced]) + over_db
+    cut = np.clip(tilt - ref, 0, max_cut) * talk
+    k = max(1, int(0.015 / (t[1] - t[0]))); cut = np.convolve(cut, np.ones(k) / k, "same")
+    G = np.ones_like(P); band = (f >= 4000)
+    G[band] = 10 ** (-cut[None, :] / 20) * np.clip((f[band, None] - 4000) / 500, 0, 1) + (1 - np.clip((f[band, None] - 4000) / 500, 0, 1))
+    _, y = istft(Z * np.sqrt(G) * np.sqrt(G), SR, nperseg=nper, noverlap=nper // 2)
+    y = y[:len(x)].astype(np.float32); y.tofile(out + ".raw"); _write(out + ".raw", out)
+    return float(cut.max())

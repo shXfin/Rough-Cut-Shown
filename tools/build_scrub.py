@@ -94,6 +94,7 @@ def bake(wav, s0, s1, n, fin=0.012, fout=0.012, mute_in=0.0, mute_out=0.0, handl
     polish.despike(tmp, tmp + ".s.wav"); os.replace(tmp + ".s.wav", tmp)
     polish.detick(tmp, tmp + ".t.wav"); os.replace(tmp + ".t.wav", tmp)   # Mateus: the ticking under everything
     polish.unmuffle(tmp, tmp + ".u.wav"); os.replace(tmp + ".u.wav", tmp)   # lav going dull when he moves (Concurrence L24)
+    polish.desibilance(tmp, tmp + ".d.wav"); os.replace(tmp + ".d.wav", tmp)   # s sounds lifted with the top end: pulled back per frame
     # loudness measured on the EDIT only, so handles never change the level of what plays
     o = subprocess.run(["ffmpeg", "-hide_banner", "-ss", f"{pre:.3f}", "-t", f"{d:.3f}", "-i", tmp, "-af", "ebur128", "-f", "null", "-"], capture_output=True, text=True).stderr
     I = [l for l in o.splitlines() if l.strip().startswith("I:")]
@@ -104,7 +105,7 @@ def bake(wav, s0, s1, n, fin=0.012, fout=0.012, mute_in=0.0, mute_out=0.0, handl
     if mute_out > 0.005: mutes.append((pre + d - mute_out, pre + d))
     mexpr = ",".join(f"volume=0:enable='between(t,{a:.3f},{b:.3f})'" for a, b in mutes)
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", tmp, "-af",
-                    f"volume={gain:.2f}dB,acompressor=threshold=-22dB:ratio=3:attack=8:release=140:knee=8:makeup=1,alimiter=limit=0.708:attack=3:release=60:level=false," + (mexpr + "," if mexpr else "") +
+                    f"volume={gain:.2f}dB,acompressor=threshold=-24dB:ratio=2.5:attack=12:release=160:knee=8:makeup=1,alimiter=limit=0.891:attack=6:release=120:level=false," + (mexpr + "," if mexpr else "") +
                     f"afade=t=in:d={fin},afade=t=out:st={full - fout:.3f}:d={fout},pan=stereo|c0=c0|c1=c0",
                     "-c:a", "pcm_s24le", out], check=True)
     # second pass: the compressor changes the level, so measure the finished EDIT again and trim to the target
@@ -114,7 +115,7 @@ def bake(wav, s0, s1, n, fin=0.012, fout=0.012, mute_in=0.0, mute_out=0.0, handl
         fix = max(-6, min(10, TARGET_LUFS - float(I2[-1].split()[1])))
         if abs(fix) > 0.3:
             t2 = out + ".fix.wav"
-            subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", out, "-af", f"volume={fix:.2f}dB,alimiter=limit=0.708:attack=3:release=60:level=false", "-c:a", "pcm_s24le", t2], check=True)
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", out, "-af", f"volume={fix:.2f}dB,alimiter=limit=0.891:attack=6:release=120:level=false", "-c:a", "pcm_s24le", t2], check=True)
             os.replace(t2, out)
     os.remove(tmp)
     LAST_PRE[0] = pre

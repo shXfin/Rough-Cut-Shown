@@ -75,12 +75,22 @@ textarea{width:100%;margin-top:6px;min-height:54px;padding:6px 8px;background:va
 .tags:empty{display:none}
 .t-pick{color:var(--pick)} .t-bad{color:var(--bad)} .t-warn{color:var(--warn)} .t-muted{color:var(--ink3);font-weight:500} .t-use{color:#8fc3f5}
 .said{margin-top:4px;color:var(--ink2);line-height:1.5}
+.search{position:relative;margin-top:8px}
+.search input{width:100%;height:28px;padding:0 26px 0 9px;background:var(--s1);color:var(--ink);border:1px solid #3b3b3b;border-radius:3px;font:inherit;outline:none;user-select:text}
+.search input:focus{border-color:var(--blue)}
+.search input::placeholder{color:var(--ink3)}
+#qx{position:absolute;right:8px;top:5px;color:var(--ink3);cursor:pointer;font-size:14px;display:none}
+#qList .it b{display:inline;margin-right:6px} #qList .it .m{color:var(--ink2)} #qList mark{background:none;color:#fff;font-weight:700}
+#qList .it.sel{background:var(--s2)}
+button.pick{margin-top:6px;width:100%;border:1px solid #3b3b3b;color:var(--ink2)}
+button.pick::after{content:"";float:right;margin-top:8px;border:4px solid transparent;border-top-color:var(--ink3)}
+#scList .it{cursor:pointer} #scList .it.on b{color:var(--blue)}
 ::-webkit-scrollbar{width:8px;height:8px} ::-webkit-scrollbar-thumb{background:#3a3a3a;border-radius:4px} ::-webkit-scrollbar-track{background:transparent}
 </style>
 </head>
 <body>
 <header>
-  <div class="row"><h1>Take Finder <small id="ver">v8</small></h1><button id="back" title="Back to the rough cut">Rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
+  <div class="row"><h1>Take Finder <small id="ver">v9</small></h1><button id="back" title="Back to the rough cut">Rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
   <div class="row" style="margin-top:10px"><button id="attn" class="wide attn">Needs your attention</button><button id="myfl" class="wide myfl">My flags</button></div>
   <div id="attnList" class="list"></div>
   <div id="flList" class="list"></div>
@@ -88,8 +98,10 @@ textarea{width:100%;margin-top:6px;min-height:54px;padding:6px 8px;background:va
   <div id="flagBox"><div class="ctx" id="flagCtx"></div><textarea id="flagNote" placeholder="What's wrong? e.g. cameraman talking at the end, wind, cut too tight"></textarea>
     <div class="row" style="margin-top:4px"><button id="flagSave" class="fl">Save flag</button><button id="flagCancel">Cancel</button></div></div>
   <button id="rebuild"></button>
-  <select id="pickScrub" title="Which scrub Show in scrub jumps to (switches by itself when you open a scrub)"></select>
-  <select id="pickLine"></select>
+  <div class="search"><input id="q" type="text" placeholder="Search a line, e.g. glucose, Spanish, line 18" autocomplete="off" spellcheck="false"><span id="qx" title="Clear">&times;</span></div>
+  <div id="qList" class="list"></div>
+  <button id="scrubBtn" class="wide pick" title="Which scrub Show in scrub jumps to (switches by itself when you open a scrub)"></button>
+  <div id="scList" class="list"></div>
   <div id="status"></div>
 </header>
 <div id="busy" style="display:none"></div>
@@ -147,9 +159,7 @@ async function load(){
   OVR = D.work ? await readJSON(ovrF(), {}) : {};
   $("hint").style.color = ""; $("hint").textContent = "Click any clip in the rough cut or the scrub. Its other takes show up here.";
   const scr = D.scrubs || [D.scrub_seq]; if (!SC || scr.indexOf(SC) < 0) SC = (STATE.scrub && scr.indexOf(STATE.scrub) >= 0) ? STATE.scrub : scr[0];
-  $("pickScrub").innerHTML = scr.map(n => `<option value="${esc(n)}"${n === SC ? " selected" : ""}>Scrub: ${esc(n.replace(/^.*?REVIEW \d+ - /, ""))}</option>`).join("");
-  $("pickLine").innerHTML = '<option value="">Browse a line...</option>' + D.lines.map(l =>
-    `<option value="${l.id}">Line ${l.num}: ${esc(l.text.slice(0, 60))}</option>`).join("");
+  drawScrub();
   drawAttn(); drawFlags(); drawRebuild();
   if (current) show(current, here);
 }
@@ -170,10 +180,58 @@ $("attnList").addEventListener("change", async e => {
 $("attnList").addEventListener("click", async e => {   // tap a line: show its takes and jump to it in the rough cut
   const it = e.target.closest(".txt"); if (!it) return;
   const l = lineOf(it.dataset.id); show(l.id, null);
-  if (l.rc_at != null) { const r = await ev(jumpJS(D.rc_seq, l.rc_at + 0.05)); status(r === "ok" ? `Rough cut: Line ${l.num}` : "Couldn't find the rough cut"); }
+  const r = await ev(jumpLineJS(l)); status(r === "ok" ? `Rough cut: Line ${l.num}` : r === "none" ? `Line ${l.num} isn't in the rough cut` : "Couldn't find the rough cut");
 });
 $("attn").addEventListener("click", () => toggle("attnList"));
-function toggle(id){ const L = $(id), open = L.style.display !== "block"; $("attnList").style.display = "none"; $("flList").style.display = "none"; L.style.display = open ? "block" : "none"; }
+function toggle(id){ const L = $(id), open = L.style.display !== "block"; ["attnList", "flList", "scList", "qList"].forEach(x => $(x).style.display = "none"); L.style.display = open ? "block" : "none"; }
+// ---------- scrub switch (a plain list: Premiere's panels drop native dropdowns) ----------
+const scName = n => n.replace(/^.*?REVIEW \d+ - /, "");
+function drawScrub(){
+  const scr = D.scrubs || [D.scrub_seq];
+  $("scrubBtn").textContent = "Show in scrub: " + scName(SC || "");
+  $("scList").innerHTML = scr.map(n => `<div class="it${n === SC ? " on" : ""}" data-sc="${esc(n)}"><div class="txt"><b>${esc(scName(n))}</b></div></div>`).join("");
+}
+$("scrubBtn").addEventListener("click", () => toggle("scList"));
+$("scList").addEventListener("click", async e => { const it = e.target.closest("[data-sc]"); if (!it) return;
+  SC = it.dataset.sc; STATE.scrub = SC; await writeJSON(STATE_F, STATE); drawScrub(); $("scList").style.display = "none";
+  if (current) show(current, here); status("Show in scrub now goes to: " + scName(SC)); });
+// ---------- search: type any words or a line number; pick one to see its takes and jump there in the rough cut ----------
+let qSel = 0, qHits = [];
+const norm = t => String(t).toLowerCase().replace(/[^a-z0-9\u00c0-\u024f ]+/g, " ");
+function runSearch(){
+  const q = $("q").value.trim(); $("qx").style.display = q ? "block" : "none";
+  if (!q || !D) { $("qList").style.display = "none"; return; }
+  const num = q.match(/^(?:line\s*|l)?(\d+)$/i); const words = norm(q).split(/\s+/).filter(Boolean);
+  qHits = D.lines.filter(l => num ? l.num === +num[1] : words.every(w => norm(l.text + " " + l.takes.map(t => t.text).join(" ")).indexOf(w) >= 0)).slice(0, 30);
+  qSel = 0;
+  const hl = t => { let h = esc(t); words.forEach(w => { if (w.length > 1) h = h.replace(new RegExp("(" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "ig"), "<mark>$1</mark>"); }); return h; };
+  $("qList").innerHTML = qHits.length ? qHits.map((l, i) => `<div class="it${i === qSel ? " sel" : ""}" data-q="${l.id}"><div class="txt"><b>Line ${l.num}</b><span class="m">${hl(l.text)}</span>${l.rc_at == null ? '<span class="why"> not in the rough cut</span>' : ""}</div></div>`).join("")
+    : `<div class="it"><div class="txt">No line matches "${esc(q)}"</div></div>`;
+  ["attnList", "flList", "scList"].forEach(x => $(x).style.display = "none"); $("qList").style.display = "block";
+}
+async function goLine(id){
+  const l = lineOf(id); if (!l) return; show(id, null); $("qList").style.display = "none";
+  const r = await ev(jumpLineJS(l)); status(r === "ok" ? `Rough cut: Line ${l.num}` : r === "none" ? `Line ${l.num} isn't in the rough cut` : "Couldn't find the rough cut");
+}
+$("q").addEventListener("input", runSearch);
+$("q").addEventListener("focus", runSearch);
+$("q").addEventListener("keydown", e => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); qSel = Math.max(0, Math.min(qHits.length - 1, qSel + (e.key === "ArrowDown" ? 1 : -1)));
+    [...$("qList").querySelectorAll(".it")].forEach((x, i) => x.classList.toggle("sel", i === qSel)); }
+  else if (e.key === "Enter" && qHits[qSel]) goLine(qHits[qSel].id);
+  else if (e.key === "Escape") { $("q").value = ""; runSearch(); }
+});
+$("qx").addEventListener("click", () => { $("q").value = ""; runSearch(); });
+$("qList").addEventListener("click", e => { const it = e.target.closest("[data-q]"); if (it) goLine(it.dataset.q); });
+// the line's own clips, found on the LIVE rough cut by name, so your cuts and moves never send it to the wrong spot
+function jumpLineJS(l){
+  const names = Object.keys(D.files || {}).filter(k => D.files[k][0] === l.id);
+  const fb = l.rc_at != null ? Math.round((l.rc_at + 0.05) * 254016000000) : -1;
+  return `(function(){var N=${JSON.stringify(names)},q=null;for(var i=0;i<app.project.sequences.numSequences;i++)if(app.project.sequences[i].name==${JSON.stringify(D.rc_seq)})q=app.project.sequences[i];
+    if(!q)return "missing";var best=-1;for(var a=0;a<q.audioTracks.numTracks;a++){var c=q.audioTracks[a].clips;for(var k=0;k<c.numItems;k++){var nm=c[k].projectItem?c[k].projectItem.name:c[k].name;
+    if((N.indexOf(nm)>=0||N.indexOf(c[k].name)>=0)&&(best<0||c[k].start.seconds<best))best=c[k].start.seconds;}}
+    var t=best>=0?String(Math.round((best+0.05)*254016000000)):(${fb}>=0?"${fb}":"");if(!t)return "none";app.project.openSequence(q.sequenceID);q.setPlayerPosition(t);return "ok";})()`;
+}
 // ---------- Flags: mark anything you hear or see, tick it off, copy the list to Claude ----------
 function drawFlags(){
   const mine = FLAGS.filter(f => f.client === D.client), left = mine.filter(f => !f.done).length;
@@ -256,7 +314,7 @@ $("rebuild").addEventListener("click", async () => {
 // ---------- the take cards ----------
 function show(id, hereTake){
   const l = lineOf(id); if (!l) return;
-  current = id; here = hereTake; $("hint").style.display = "none"; $("pickLine").value = id;
+  current = id; here = hereTake; $("hint").style.display = "none";
   const ov = OVR[id];
   $("line").innerHTML = `<div><span class="n">Line ${l.num}</span><span class="who">${esc(l.who)}, ${l.takes.length} takes</span></div>
     <div class="text">${esc(l.text)}</div>${l.check.length ? `<div class="check">Needs your ear: ${esc(l.check.join(", "))}</div>` : ""}`;
@@ -290,8 +348,7 @@ $("back").addEventListener("click", async () => {
 });
 $("openNew").addEventListener("click", async () => { const r = await ev(jumpJS(D.rc_seq, 0)); status(r === "ok" ? "Opened the current rough cut" : "Couldn't find it"); });
 $("reload").addEventListener("click", () => { load(); status("Reloaded"); });
-$("pickScrub").addEventListener("change", async e => { SC = e.target.value; STATE.scrub = SC; await writeJSON(STATE_F, STATE); if (current) show(current, here); status("Show in scrub now goes to: " + SC.replace(/^.*?REVIEW \d+ - /, "")); });
-$("pickLine").addEventListener("change", e => e.target.value && show(e.target.value, null));
+
 // follow Premiere: the selected clip (or the playhead) picks the line shown here. The sound clip's FILE names the
 // take, so a take you dragged from the scrub into the rough cut by hand is still recognised after you move things.
 // follow Premiere. The PLAYHEAD wins whenever it moves (playing, scrubbing, jumping); a clip you click wins when the
@@ -300,10 +357,10 @@ $("pickLine").addEventListener("change", e => e.target.value && show(e.target.va
 const SEL = `(function(){var q=app.project.activeSequence;if(!q)return "";var s=q.getSelection(),st=-1,sn="";
   for(var i=0;i<s.length;i++)if(s[i].start){if(st<0)st=s[i].start.seconds+0.05;if(s[i].mediaType=="Audio"&&s[i].projectItem&&!sn)sn=s[i].projectItem.name;}
   var p=q.getPlayerPosition().seconds,pn="";
-  for(var a=0;a<q.audioTracks.numTracks&&!pn;a++){var c=q.audioTracks[a].clips;for(var k=0;k<c.numItems;k++)if(c[k].start.seconds<=p&&p<c[k].end.seconds&&c[k].projectItem&&/\.wav$/i.test(c[k].projectItem.name)&&!/^roomtone/.test(c[k].projectItem.name)){pn=c[k].projectItem.name;break;}}
+  for(var a=0;a<q.audioTracks.numTracks&&!pn;a++){var c=q.audioTracks[a].clips;for(var k=0;k<c.numItems;k++)if(c[k].start.seconds<=p&&p<c[k].end.seconds&&c[k].projectItem&&!/^roomtone/i.test(c[k].projectItem.name)){pn=c[k].projectItem.name;break;}}
   return [q.name,p,pn,st,sn].join("|");})()`;
 function whereIs(seq, t, nm){
-  const f = D.files && D.files[nm]; if (f) return { line: f[0], take: f[1] };
+  const f = D.files && D.files[nm]; if (f) return { line: f[0], take: f[1] == null ? null : f[1] };
   if (seq === D.rc_seq) { const l = D.lines.find(x => x.rc_at != null && x.rc_at <= t && t < x.rc_at + x.rc_dur); return l ? { line: l.id, take: null } : null; }
   if ((D.scrubs || [D.scrub_seq]).indexOf(seq) >= 0) for (const l of D.lines) { const tk = l.takes.find(x => { const a = atIn(x, seq); return a != null && a <= t && t < a + x.dur; }); if (tk) return { line: l.id, take: tk.take }; }
   return null;
@@ -322,7 +379,7 @@ async function poll(){
       }
       const r = String(await ev(SEL)); const [seq, ps, pn, ss, sn] = r.split("|"); const ph = parseFloat(ps), st = parseFloat(ss);
       if (seq && seq !== lastSeq) { lastSeq = seq;
-        if ((D.scrubs || []).indexOf(seq) >= 0 && seq !== SC) { SC = seq; $("pickScrub").value = seq; }
+        if ((D.scrubs || []).indexOf(seq) >= 0 && seq !== SC) { SC = seq; drawScrub(); }
         else if ((D.scrubs || []).indexOf(seq) < 0) lastCut = seq; $("old").style.display = /\(before your last swap\)/.test(seq) ? "block" : "none"; }
       let w = null;
       const selKey = seq + "|" + ss + "|" + sn;
