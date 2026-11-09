@@ -334,3 +334,9 @@ Vision
 - A recorder that runs for an hour (Wireless PRO) makes recorder-level coverage look low; judge camera coverage per
   TAKE, not per recorder file.
 - Shooting script check worked again: the Drive doc held 6 versions; the recorder matched "Teleprompter v2".
+- **Drive link speed first.** Before any proxy job, check `system_profiler SPUSBHostDataType` for the media drive.
+  Concurrence's SanDisk sat at 480 Mb/s (USB 2) on a MacBook charging cable: 35 MB/s, so every proxy app crawled.
+  On a 10 Gb/s cable: ~900 MB/s, Resolve rendered 7K Canon RAW at ~23 fps (19 clips, 234 GB, ~30 min).
+- **Resolve proxies for Premiere:** timeline resolution must match the camera shape (1280x676 for 17:9), else the
+  proxy gets black bars inside. Render Individual clips, ProRes 422 Proxy, Source name, 4 audio channels, no
+  directory levels. Premiere accepts them with attachProxy; export still uses the RAW.
