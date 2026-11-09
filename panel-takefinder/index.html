@@ -75,11 +75,21 @@ textarea{width:100%;margin-top:6px;min-height:54px;padding:6px 8px;background:va
 .tags:empty{display:none}
 .t-pick{color:var(--pick)} .t-bad{color:var(--bad)} .t-warn{color:var(--warn)} .t-muted{color:var(--ink3);font-weight:500} .t-use{color:#8fc3f5}
 .said{margin-top:4px;color:var(--ink2);line-height:1.5}
-.search{position:relative;margin-top:8px}
-.search input{width:100%;height:28px;padding:0 26px 0 9px;background:var(--s1);color:var(--ink);border:1px solid #3b3b3b;border-radius:3px;font:inherit;outline:none;user-select:text}
-.search input:focus{border-color:var(--blue)}
+.search{position:relative;margin-top:10px}
+.search .mag{position:absolute;left:10px;top:9px;color:var(--ink3);pointer-events:none}
+.search input{-webkit-appearance:none;width:100%;height:32px;padding:0 30px 0 31px;background:#2a2a2a;color:#f0f0f0;border:1px solid #454545;border-radius:16px;font:inherit;font-size:12px;outline:none;user-select:text;box-shadow:inset 0 1px 2px rgba(0,0,0,.35)}
+.search input::-webkit-search-cancel-button{display:none}
+.search input:hover{border-color:#555}
+.search input:focus{border-color:var(--blue);background:#252a30;box-shadow:0 0 0 3px rgba(45,140,235,.18)}
+.search input:focus ~ #qk{display:none}
 .search input::placeholder{color:var(--ink3)}
-#qx{position:absolute;right:8px;top:5px;color:var(--ink3);cursor:pointer;font-size:14px;display:none}
+.search:focus-within .mag{color:var(--blue)}
+#qk{position:absolute;right:10px;top:8px;padding:0 5px;font:600 10px/15px -apple-system,system-ui;color:var(--ink3);border:1px solid #4a4a4a;border-radius:3px}
+#qx{position:absolute;right:11px;top:6px;color:var(--ink2);cursor:pointer;font-size:15px;display:none}
+.said .w{border-radius:2px;transition:background .08s,color .08s}
+.said .w.past{color:#cfcfcf}
+.said .w.now{background:var(--blue);color:#fff;box-shadow:0 0 0 2px var(--blue)}
+#rcList .it{cursor:pointer} #rcList .it.on b{color:var(--blue)}
 #qList .it b{display:inline;margin-right:6px} #qList .it .m{color:var(--ink2)} #qList mark{background:none;color:#fff;font-weight:700}
 #qList .it.sel{background:var(--s2)}
 button.pick{margin-top:6px;width:100%;border:1px solid #3b3b3b;color:var(--ink2)}
@@ -90,7 +100,7 @@ button.pick::after{content:"";float:right;margin-top:8px;border:4px solid transp
 </head>
 <body>
 <header>
-  <div class="row"><h1>Take Finder <small id="ver">v9</small></h1><button id="back" title="Back to the rough cut">Rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
+  <div class="row"><h1>Take Finder <small id="ver">v10</small></h1><button id="back" title="Back to the rough cut">Rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
   <div class="row" style="margin-top:10px"><button id="attn" class="wide attn">Needs your attention</button><button id="myfl" class="wide myfl">My flags</button></div>
   <div id="attnList" class="list"></div>
   <div id="flList" class="list"></div>
@@ -98,8 +108,10 @@ button.pick::after{content:"";float:right;margin-top:8px;border:4px solid transp
   <div id="flagBox"><div class="ctx" id="flagCtx"></div><textarea id="flagNote" placeholder="What's wrong? e.g. cameraman talking at the end, wind, cut too tight"></textarea>
     <div class="row" style="margin-top:4px"><button id="flagSave" class="fl">Save flag</button><button id="flagCancel">Cancel</button></div></div>
   <button id="rebuild"></button>
-  <div class="search"><input id="q" type="text" placeholder="Search a line, e.g. glucose, Spanish, line 18" autocomplete="off" spellcheck="false"><span id="qx" title="Clear">&times;</span></div>
+  <div class="search"><svg class="mag" viewBox="0 0 16 16" width="13" height="13"><circle cx="6.8" cy="6.8" r="4.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.4 10.4 14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input id="q" type="search" placeholder="Search lines: glucose, Spanish, 18" autocomplete="off" spellcheck="false"><kbd id="qk">/</kbd><span id="qx" title="Clear">&times;</span></div>
   <div id="qList" class="list"></div>
+  <button id="rcBtn" class="wide pick" title="The cut this panel jumps to and follows"></button>
+  <div id="rcList" class="list"></div>
   <button id="scrubBtn" class="wide pick" title="Which scrub Show in scrub jumps to (switches by itself when you open a scrub)"></button>
   <div id="scList" class="list"></div>
   <div id="status"></div>
@@ -159,7 +171,8 @@ async function load(){
   OVR = D.work ? await readJSON(ovrF(), {}) : {};
   $("hint").style.color = ""; $("hint").textContent = "Click any clip in the rough cut or the scrub. Its other takes show up here.";
   const scr = D.scrubs || [D.scrub_seq]; if (!SC || scr.indexOf(SC) < 0) SC = (STATE.scrub && scr.indexOf(STATE.scrub) >= 0) ? STATE.scrub : scr[0];
-  drawScrub();
+  if (STATE.rc && STATE.rc[D.client]) D.rc_seq = STATE.rc[D.client];
+  drawScrub(); drawRC();
   drawAttn(); drawFlags(); drawRebuild();
   if (current) show(current, here);
 }
@@ -183,7 +196,7 @@ $("attnList").addEventListener("click", async e => {   // tap a line: show its t
   const r = await ev(jumpLineJS(l)); status(r === "ok" ? `Rough cut: Line ${l.num}` : r === "none" ? `Line ${l.num} isn't in the rough cut` : "Couldn't find the rough cut");
 });
 $("attn").addEventListener("click", () => toggle("attnList"));
-function toggle(id){ const L = $(id), open = L.style.display !== "block"; ["attnList", "flList", "scList", "qList"].forEach(x => $(x).style.display = "none"); L.style.display = open ? "block" : "none"; }
+function toggle(id){ const L = $(id), open = L.style.display !== "block"; ["attnList", "flList", "scList", "qList", "rcList"].forEach(x => $(x).style.display = "none"); L.style.display = open ? "block" : "none"; }
 // ---------- scrub switch (a plain list: Premiere's panels drop native dropdowns) ----------
 const scName = n => n.replace(/^.*?REVIEW \d+ - /, "");
 function drawScrub(){
@@ -195,11 +208,23 @@ $("scrubBtn").addEventListener("click", () => toggle("scList"));
 $("scList").addEventListener("click", async e => { const it = e.target.closest("[data-sc]"); if (!it) return;
   SC = it.dataset.sc; STATE.scrub = SC; await writeJSON(STATE_F, STATE); drawScrub(); $("scList").style.display = "none";
   if (current) show(current, here); status("Show in scrub now goes to: " + scName(SC)); });
+// ---------- which cut the panel follows and jumps to (any sequence in the project; the scrubs have their own switch) ----------
+async function drawRC(){
+  $("rcBtn").textContent = "Follows: " + D.rc_seq;
+  const r = await ev(`(function(){var o=[];for(var i=0;i<app.project.sequences.numSequences;i++)o.push(app.project.sequences[i].name);return o.join("\\n");})()`);
+  const all = String(r || "").split("\n").filter(n => n && n.indexOf("__") !== 0 && (D.scrubs || []).indexOf(n) < 0);
+  $("rcList").innerHTML = all.map(n => `<div class="it${n === D.rc_seq ? " on" : ""}" data-rc="${esc(n)}"><div class="txt"><b>${esc(n)}</b></div></div>`).join("") || '<div class="it"><div class="txt">No other sequences</div></div>';
+}
+$("rcBtn").addEventListener("click", () => { drawRC(); toggle("rcList"); });
+$("rcList").addEventListener("click", async e => { const it = e.target.closest("[data-rc]"); if (!it) return;
+  D.rc_seq = it.dataset.rc; STATE.rc = STATE.rc || {}; STATE.rc[D.client] = D.rc_seq; await writeJSON(STATE_F, STATE);
+  $("rcList").style.display = "none"; drawRC(); status("Following " + D.rc_seq); });
+document.addEventListener("keydown", e => { if (e.key === "/" && document.activeElement !== $("q") && document.activeElement.tagName !== "TEXTAREA") { e.preventDefault(); $("q").focus(); } });
 // ---------- search: type any words or a line number; pick one to see its takes and jump there in the rough cut ----------
 let qSel = 0, qHits = [];
 const norm = t => String(t).toLowerCase().replace(/[^a-z0-9\u00c0-\u024f ]+/g, " ");
 function runSearch(){
-  const q = $("q").value.trim(); $("qx").style.display = q ? "block" : "none";
+  const q = $("q").value.trim(); $("qx").style.display = q ? "block" : "none"; $("qk").style.display = q ? "none" : "";
   if (!q || !D) { $("qList").style.display = "none"; return; }
   const num = q.match(/^(?:line\s*|l)?(\d+)$/i); const words = norm(q).split(/\s+/).filter(Boolean);
   qHits = D.lines.filter(l => num ? l.num === +num[1] : words.every(w => norm(l.text + " " + l.takes.map(t => t.text).join(" ")).indexOf(w) >= 0)).slice(0, 30);
@@ -207,7 +232,7 @@ function runSearch(){
   const hl = t => { let h = esc(t); words.forEach(w => { if (w.length > 1) h = h.replace(new RegExp("(" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "ig"), "<mark>$1</mark>"); }); return h; };
   $("qList").innerHTML = qHits.length ? qHits.map((l, i) => `<div class="it${i === qSel ? " sel" : ""}" data-q="${l.id}"><div class="txt"><b>Line ${l.num}</b><span class="m">${hl(l.text)}</span>${l.rc_at == null ? '<span class="why"> not in the rough cut</span>' : ""}</div></div>`).join("")
     : `<div class="it"><div class="txt">No line matches "${esc(q)}"</div></div>`;
-  ["attnList", "flList", "scList"].forEach(x => $(x).style.display = "none"); $("qList").style.display = "block";
+  ["attnList", "flList", "scList", "rcList"].forEach(x => $(x).style.display = "none"); $("qList").style.display = "block";
 }
 async function goLine(id){
   const l = lineOf(id); if (!l) return; show(id, null); $("qList").style.display = "none";
@@ -332,8 +357,17 @@ function show(id, hereTake){
     return `<div class="take${t.picked ? " picked" : ""}${chosen ? " chosen" : ""}${t.feed ? " feed" : ""}${hereTake === t.take ? " here" : ""}">
       <div class="pics">${pics}</div>
       <div class="head"><b>Take ${t.take} of ${t.of}</b><button class="fl" data-i="${i}" title="Flag this take">Flag</button>${use}<button class="go" data-i="${i}">Show in scrub</button></div>
-      <div class="tags">${tags}</div><div class="said">"${esc(t.text)}"</div></div>`;
+      <div class="tags">${tags}</div><div class="said" data-take="${t.take}">${t.w && t.w.length ? t.w.map(w => `<span class="w" data-a="${w[1]}" data-b="${w[2]}">${esc(w[0])}</span>`).join(" ") : `"${esc(t.text)}"`}</div></div>`;
   }).join("");
+}
+function markWord(rec){
+  const box = document.querySelector(here != null ? `.said[data-take="${here}"]` : ".take.picked .said");
+  document.querySelectorAll(".said .w.now, .said .w.past").forEach(x => { if (!box || !box.contains(x)) x.classList.remove("now", "past"); });
+  if (!box || rec == null) return;
+  let hit = null;
+  box.querySelectorAll(".w").forEach(x => { const a = +x.dataset.a, b = +x.dataset.b;
+    x.classList.toggle("past", b <= rec); if (a <= rec + 0.02 && rec < b + 0.12) hit = x; x.classList.remove("now"); });
+  if (hit) { hit.classList.add("now"); hit.classList.remove("past"); }
 }
 const atIn = (t, seq) => (t.at && t.at[seq] != null) ? t.at[seq] : (seq === D.scrub_seq ? t.scrub_at : null);
 function jumpJS(seqName, sec){
@@ -356,9 +390,9 @@ $("reload").addEventListener("click", () => { load(); status("Reloaded"); });
 // or the old copy kept in Sequences/Old.
 const SEL = `(function(){var q=app.project.activeSequence;if(!q)return "";var s=q.getSelection(),st=-1,sn="";
   for(var i=0;i<s.length;i++)if(s[i].start){if(st<0)st=s[i].start.seconds+0.05;if(s[i].mediaType=="Audio"&&s[i].projectItem&&!sn)sn=s[i].projectItem.name;}
-  var p=q.getPlayerPosition().seconds,pn="";
-  for(var a=0;a<q.audioTracks.numTracks&&!pn;a++){var c=q.audioTracks[a].clips;for(var k=0;k<c.numItems;k++)if(c[k].start.seconds<=p&&p<c[k].end.seconds&&c[k].projectItem&&!/^roomtone/i.test(c[k].projectItem.name)){pn=c[k].projectItem.name;break;}}
-  return [q.name,p,pn,st,sn].join("|");})()`;
+  var p=q.getPlayerPosition().seconds,pn="",pst="",pin="";
+  for(var a=0;a<q.audioTracks.numTracks&&!pn;a++){var c=q.audioTracks[a].clips;for(var k=0;k<c.numItems;k++)if(c[k].start.seconds<=p&&p<c[k].end.seconds&&c[k].projectItem&&!/^roomtone/i.test(c[k].projectItem.name)){pn=c[k].projectItem.name;pst=c[k].start.seconds;pin=c[k].inPoint.seconds;break;}}
+  return [q.name,p,pn,st,sn,pst,pin].join("|");})()`;
 function whereIs(seq, t, nm){
   const f = D.files && D.files[nm]; if (f) return { line: f[0], take: f[1] == null ? null : f[1] };
   if (seq === D.rc_seq) { const l = D.lines.find(x => x.rc_at != null && x.rc_at <= t && t < x.rc_at + x.rc_dur); return l ? { line: l.id, take: null } : null; }
@@ -377,7 +411,7 @@ async function poll(){
       $("busy").style.display = busy ? "block" : "none";
       if (busy) $("busy").textContent = `Rebuilding ${busy.seq} (since ${busy.since}). Hold your edits in it until this goes away: edits made now won't be replaced, the rebuild stops instead.`;
       }
-      const r = String(await ev(SEL)); const [seq, ps, pn, ss, sn] = r.split("|"); const ph = parseFloat(ps), st = parseFloat(ss);
+      const r = String(await ev(SEL)); const [seq, ps, pn, ss, sn, pst, pin] = r.split("|"); const ph = parseFloat(ps), st = parseFloat(ss);
       if (seq && seq !== lastSeq) { lastSeq = seq;
         if ((D.scrubs || []).indexOf(seq) >= 0 && seq !== SC) { SC = seq; drawScrub(); }
         else if ((D.scrubs || []).indexOf(seq) < 0) lastCut = seq; $("old").style.display = /\(before your last swap\)/.test(seq) ? "block" : "none"; }
@@ -387,6 +421,8 @@ async function poll(){
       else if (selKey !== lastSel && !isNaN(st)) { w = whereIs(seq, st, sn); }
       lastSel = selKey;
       if (w && (w.line !== current || w.take !== here)) show(w.line, w.take);
+      const b = D.base && D.base[pn];   // the recording time under the playhead, then the word at that time
+      markWord(b && pst !== "" ? b[1] + parseFloat(pin) + (ph - parseFloat(pst)) : null);
     }
   } catch (e) { status("Tracking hiccup: " + e.message); }
   setTimeout(poll, 500);
