@@ -26,7 +26,9 @@ button.use{color:#8fc3f5;border-color:#2c4660}
 button.use:hover{border-color:var(--blue);background:#1d2a38}
 button.go{color:var(--ink)}
 #flagHere{flex:1}
-#rebuild{display:none;width:100%;height:28px;margin-top:8px;background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+#rbX{position:absolute;right:4px;top:10px;width:22px;height:22px;line-height:21px;text-align:center;font-size:16px;color:#dbe9fb;cursor:pointer;border-radius:3px}
+#rbX:hover{background:rgba(0,0,0,.25);color:#fff}
+#rebuild{display:block!important;padding-right:30px;width:100%;height:28px;margin-top:8px;background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
 #rebuild:hover{background:#3b97f0}
 select{width:100%;height:26px;margin-top:6px;padding:0 6px;background:var(--s1);color:var(--ink);border:1px solid #3b3b3b;border-radius:3px;font:inherit;outline:none}
 select:focus,textarea:focus{border-color:var(--blue)}
@@ -95,6 +97,7 @@ textarea{width:100%;margin-top:6px;min-height:54px;padding:6px 8px;background:va
 #rcList .it{cursor:pointer} #rcList .it.on b{color:var(--blue)}
 #qList .it b{display:inline;margin-right:6px} #qList .it .m{color:var(--ink2)} #qList mark{background:none;color:#fff;font-weight:700}
 #qList .it.sel{background:var(--s2)}
+#qList{max-height:340px}
 button.pick{margin-top:6px;width:100%;border:1px solid #3b3b3b;color:var(--ink2)}
 button.pick::after{content:"";float:right;margin-top:8px;border:4px solid transparent;border-top-color:var(--ink3)}
 #scList .it{cursor:pointer} #scList .it.on b{color:var(--blue)}
@@ -103,14 +106,14 @@ button.pick::after{content:"";float:right;margin-top:8px;border:4px solid transp
 </head>
 <body>
 <header>
-  <div class="row"><h1>Take Finder <small id="ver">v12</small></h1><button id="back" title="Back to the rough cut">Rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
+  <div class="row"><h1>Take Finder <small id="ver">v13</small></h1><button id="back" title="Back to the rough cut">Rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
   <div class="row" style="margin-top:10px"><button id="attn" class="wide attn">Needs your attention</button><button id="myfl" class="wide myfl">My flags</button></div>
   <div id="attnList" class="list"></div>
   <div id="flList" class="list"></div>
   <div class="row" style="margin-top:6px"><button id="flagHere" class="fl">Flag this spot</button></div>
   <div id="flagBox"><div class="ctx" id="flagCtx"></div><textarea id="flagNote" placeholder="What's wrong? e.g. cameraman talking at the end, wind, cut too tight"></textarea>
     <div class="row" style="margin-top:4px"><button id="flagSave" class="fl">Save flag</button><button id="flagCancel">Cancel</button></div></div>
-  <button id="rebuild"></button>
+  <div id="rbRow" style="display:none;position:relative"><button id="rebuild"></button><span id="rbX" title="Drop my swaps (nothing gets rebuilt)">&times;</span></div>
   <div class="search"><svg class="mag" viewBox="0 0 16 16" width="13" height="13"><circle cx="6.8" cy="6.8" r="4.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.4 10.4 14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input id="q" type="search" placeholder="Search lines: glucose, Spanish, 18" autocomplete="off" spellcheck="false"><kbd id="qk">/</kbd><span id="qx" title="Clear">&times;</span></div>
   <div id="qList" class="list"></div>
   <button id="rcBtn" class="wide pick" title="The cut this panel jumps to and follows"></button>
@@ -228,7 +231,13 @@ let qSel = 0, qHits = [];
 const norm = t => String(t).toLowerCase().replace(/[^a-z0-9\u00c0-\u024f ]+/g, " ");
 function runSearch(){
   const q = $("q").value.trim(); $("qx").style.display = q ? "block" : "none"; $("qk").style.display = q ? "none" : "";
-  if (!q || !D) { $("qList").style.display = "none"; return; }
+  if (!D) return;
+  if (!q) {   // empty search = every line, in script order, to browse
+    qHits = D.lines.slice(); qSel = Math.max(0, qHits.findIndex(l => l.id === current));
+    $("qList").innerHTML = `<div class="it" style="color:var(--ink3)"><div class="txt">All ${qHits.length} lines. Type to search.</div></div>` + qHits.map((l, i) => `<div class="it${l.id === current ? " sel" : ""}" data-q="${l.id}"><div class="txt"><b>Line ${l.num}</b><span class="m">${esc(l.text)}</span>${l.rc_at == null ? '<span class="why"> not in the rough cut</span>' : ""}</div></div>`).join("");
+    ["attnList", "flList", "scList", "rcList"].forEach(x => $(x).style.display = "none"); $("qList").style.display = "block";
+    const c = $("qList").querySelector(".sel"); if (c) c.scrollIntoView({ block: "nearest" }); return;
+  }
   const num = q.match(/^(?:line\s*|l)?(\d+)$/i); const words = norm(q).split(/\s+/).filter(Boolean);
   qHits = D.lines.filter(l => num ? l.num === +num[1] : words.every(w => norm(l.text + " " + l.takes.map(t => t.text).join(" ")).indexOf(w) >= 0)).slice(0, 30);
   qSel = 0;
@@ -245,7 +254,7 @@ $("q").addEventListener("input", runSearch);
 $("q").addEventListener("focus", runSearch);
 $("q").addEventListener("keydown", e => {
   if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); qSel = Math.max(0, Math.min(qHits.length - 1, qSel + (e.key === "ArrowDown" ? 1 : -1)));
-    [...$("qList").querySelectorAll(".it")].forEach((x, i) => x.classList.toggle("sel", i === qSel)); }
+    [...$("qList").querySelectorAll("[data-q]")].forEach((x, i) => { x.classList.toggle("sel", i === qSel); if (i === qSel) x.scrollIntoView({ block: "nearest" }); }); }
   else if (e.key === "Enter" && qHits[qSel]) goLine(qHits[qSel].id);
   else if (e.key === "Escape") { $("q").value = ""; runSearch(); }
 });
@@ -332,9 +341,13 @@ function pending(){   // your choices that the rough cut doesn't have yet
 }
 function drawRebuild(){
   const n = pending().length, b = $("rebuild");
-  b.style.display = n ? "block" : "none";
+  $("rbRow").style.display = n ? "block" : "none";
   b.textContent = `Rebuild rough cut with your ${n} swap${n > 1 ? "s" : ""} (about 3 min)`;
 }
+$("rbX").addEventListener("click", async () => {
+  pending().forEach(id => delete OVR[id]); await writeJSON(ovrF(), OVR); drawRebuild(); if (current) show(current, here);
+  status("Your swaps were dropped. The rough cut stays as it is.");
+});
 $("rebuild").addEventListener("click", async () => {
   const r = await ev(`(function(){var f=new File(${JSON.stringify(D.work + "/Rebuild rough cut.command")});if(!f.exists)return "missing";f.execute();return "ok";})()`);
   status(r === "ok" ? "Rebuilding in Terminal. Your old rough cut is kept in Sequences/Old." : "Rebuild script not found. Ask Claude to set it up.");
