@@ -103,7 +103,7 @@ button.pick::after{content:"";float:right;margin-top:8px;border:4px solid transp
 </head>
 <body>
 <header>
-  <div class="row"><h1>Take Finder <small id="ver">v11</small></h1><button id="back" title="Back to the rough cut">Rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
+  <div class="row"><h1>Take Finder <small id="ver">v12</small></h1><button id="back" title="Back to the rough cut">Rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
   <div class="row" style="margin-top:10px"><button id="attn" class="wide attn">Needs your attention</button><button id="myfl" class="wide myfl">My flags</button></div>
   <div id="attnList" class="list"></div>
   <div id="flList" class="list"></div>
@@ -346,7 +346,8 @@ function show(id, hereTake){
   const ov = OVR[id];
   $("line").innerHTML = `<div><span class="n">Line ${l.num}</span><span class="who">${esc(l.who)}, ${l.takes.length} takes</span></div>
     <div class="text">${esc(l.text)}</div>${l.check.length ? `<div class="check">Needs your ear: ${esc(l.check.join(", "))}</div>` : ""}`;
-  $("takes").innerHTML = l.takes.map((t, i) => {
+  const order = l.takes.map((t, i) => i).sort((a, b) => (l.takes[b].take === hereTake) - (l.takes[a].take === hereTake) || (!!l.takes[b].picked) - (!!l.takes[a].picked));
+  $("takes").innerHTML = order.map(i => { const t = l.takes[i];
     const chosen = ov && ov.take === t.take && ov.src === t.src;
     const pics = Object.keys(t.thumbs || {}).sort().map(c => t.thumbs[c] ?
       `<div><img src="file://${encodeURI(t.thumbs[c])}"><span>${c} cam</span></div>` : "").join("") || '<div class="nopic">sound only</div>';
@@ -362,6 +363,7 @@ function show(id, hereTake){
       <div class="head"><b>Take ${t.take} of ${t.of}</b><button class="fl" data-i="${i}" title="Flag this take">Flag</button>${use}<button class="go" data-i="${i}">Show in scrub</button></div>
       <div class="tags">${tags}</div><div class="said" data-take="${t.take}">${t.w && t.w.length ? t.w.map(w => `<span class="w" data-a="${w[1]}" data-b="${w[2]}">${esc(w[0])}</span>`).join(" ") : `"${esc(t.text)}"`}</div></div>`;
   }).join("");
+  const h = document.querySelector(".take.here"); if (h) h.scrollIntoView({ block: "nearest" });
 }
 function markWord(rec){
   const box = document.querySelector(here != null ? `.said[data-take="${here}"]` : ".take.picked .said");
@@ -419,13 +421,18 @@ async function poll(){
         if ((D.scrubs || []).indexOf(seq) >= 0 && seq !== SC) { SC = seq; drawScrub(); }
         else if ((D.scrubs || []).indexOf(seq) < 0) lastCut = seq; $("old").style.display = /\(before your last swap\)/.test(seq) ? "block" : "none"; }
       let w = null;
+      // the recording time under the playhead: from a cut piece (its offset) or the raw recorder file itself (offset 0)
+      const isRaw = pn && D.lines.some(l => l.takes.some(t => t.src === pn));
+      const bb = D.base && D.base[pn] ? D.base[pn][1] : (isRaw ? 0 : null);
+      const rec = bb != null && pst !== "" ? bb + parseFloat(pin) + (ph - parseFloat(pst)) : null;
+      const byRec = () => { if (rec == null || !isRaw) return null; for (const l of D.lines) for (const t of l.takes)
+        if (t.src === pn && t.w && t.w.length && t.w[0][1] - 0.3 <= rec && rec <= t.w[t.w.length - 1][2] + 0.3) return { line: l.id, take: t.take }; return null; };
       const selKey = seq + "|" + ss + "|" + sn;
-      if (!isNaN(ph) && (lastPH === null || Math.abs(ph - lastPH) > 0.04)) { lastPH = ph; w = whereIs(seq, ph, pn); }
+      if (!isNaN(ph) && (lastPH === null || Math.abs(ph - lastPH) > 0.04)) { lastPH = ph; w = byRec() || whereIs(seq, ph, pn); }
       else if (selKey !== lastSel && !isNaN(st)) { w = whereIs(seq, st, sn); }
       lastSel = selKey;
       if (w && (w.line !== current || w.take !== here)) show(w.line, w.take);
-      const b = D.base && D.base[pn];   // the recording time under the playhead, then the word at that time
-      markWord(b && pst !== "" ? b[1] + parseFloat(pin) + (ph - parseFloat(pst)) : null);
+      markWord(rec);
     }
   } catch (e) { status("Tracking hiccup: " + e.message); }
   setTimeout(poll, 500);
