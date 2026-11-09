@@ -359,3 +359,16 @@ Vision
   take. Rule: a pairing needs >= 30 matches, or its camera audio must correlate with the recorder (> 0.55) over the
   clip. Drop the rest BEFORE building. Then check every rough-cut line: camera audio vs recorder at the take, lag
   within 40 ms and correlation > 0.6, else flag. (Concurrence: 14 A and 12 B false pairings removed.)
+
+## Alternative demos / versions (2026-11-10)
+- Scripts often hold SEVERAL versions of a section (Concurrence's doc: metformin call, hair-loss call, Sarah call,
+  "without Concurrence" receptionist call). Before building, search the transcripts for each version's key words
+  and list which were actually SHOT. Unshot versions are ignored, not reported as missing lines.
+- "Aha 1/2/3" inside one version are PARTS of one demo (played in order), not alternatives. Alternatives are whole
+  versions of the same section with different wording/props.
+- When 2+ versions of a section were shot: tag every line with its version (lines.json "variant": "Demo A ...").
+  The 3-best scrub keeps EVERY shot version, each as its own labelled block ("DEMO A - metformin", "DEMO B - hair
+  loss") with a marker, so the producer can choose. The rough cut uses ONE version by default (the one in the
+  shooting script, else the one with the most usable takes) and puts a marker at the section start:
+  "Other demo versions in the scrub: B, C". Never mix lines from two versions in one rough cut.
+- Concurrence check: only the metformin demo was shot; all 3 aha parts are in both scrubs and the rough cut.
