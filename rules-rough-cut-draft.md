@@ -372,3 +372,10 @@ Vision
   shooting script, else the one with the most usable takes) and puts a marker at the section start:
   "Other demo versions in the scrub: B, C". Never mix lines from two versions in one rough cut.
 - Concurrence check: only the metformin demo was shot; all 3 aha parts are in both scrubs and the rough cut.
+- **Rough cut picks must have the main camera.** A take with sound only (no A cam rolling) goes black in the cut
+  (Concurrence L19 "Of course"). Pick the best take WITH A cam; for an off-camera voice line (agent, crew read)
+  that means a take where the founder is on camera listening.
+- **Editor's picks as a reference.** When a human rough cut exists (Aspect), find which take it used per line by
+  matching its audio against every take (log-envelope correlation > 0.6, then keep only matches that run in script
+  order: short lines otherwise match the wrong spot). Mark them in the 3-best scrub as "EDITOR PICK" (and add the
+  take if it isn't in our top 3) so the producer can compare. Add section markers (HOOK, AHA 1/2/3, CLOSE) too.
