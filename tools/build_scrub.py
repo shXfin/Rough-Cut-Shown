@@ -93,6 +93,7 @@ def bake(wav, s0, s1, n, fin=0.012, fout=0.012, mute_in=0.0, mute_out=0.0, handl
     polish.dewind(tmp, tmp + ".w.wav"); os.replace(tmp + ".w.wav", tmp)
     polish.despike(tmp, tmp + ".s.wav"); os.replace(tmp + ".s.wav", tmp)
     polish.detick(tmp, tmp + ".t.wav"); os.replace(tmp + ".t.wav", tmp)   # Mateus: the ticking under everything
+    polish.unmuffle(tmp, tmp + ".u.wav"); os.replace(tmp + ".u.wav", tmp)   # lav going dull when he moves (Concurrence L24)
     # loudness measured on the EDIT only, so handles never change the level of what plays
     o = subprocess.run(["ffmpeg", "-hide_banner", "-ss", f"{pre:.3f}", "-t", f"{d:.3f}", "-i", tmp, "-af", "ebur128", "-f", "null", "-"], capture_output=True, text=True).stderr
     I = [l for l in o.splitlines() if l.strip().startswith("I:")]

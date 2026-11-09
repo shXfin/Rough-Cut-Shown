@@ -383,3 +383,26 @@ Vision
   later", a new location) must all come from that scene's setup. Concurrence L35+L36 are the couch follow-up call
   (clip C030); L36 had also been read in the office, and picking that read broke the scene (outfit and room jump).
   Detect setups from the camera clips (location/outfit changes) and only pick takes from the line's scene.
+
+## AI voices for scripted AI/agent lines (Concurrence, 2026-11-10)
+- Lines the script gives to an AI agent or app are read by the crew on set as placeholders. In the rough cut, replace every one with an AI voice, generated straight from the SCRIPT text (not the crew's wording: L35 crew said "last week", the script says "last month").
+- Melius: ElevenLabs v3 (`eleven_v3`, text-to-speech), one voice for the whole film. Pick it with `audio_voice_list` (search "assistant calm", "customer service"). Concurrence used "Sofia - Friendly, AI Assistant, American" (x8GG27Jf8JBB9yLaSos4). v3 speaks other languages in the same voice, so a Spanish agent line stays in character. 7 lines cost 54 credits. Files go in `work/ai_voice/`.
+- Placement: remove the crew-read sound clip and put the AI line in at the slot's start + 0.2 s. If the AI line runs longer than the slot, slide it earlier first, never over the next line's first word.
+- An agent line that was never shot gets its own slot: open a gap, hold the previous shot of the talent listening over it, and add a marker.
+- Crew reads hidden INSIDE a talent take. Whisper often misses a non-English or far-off crew read (Concurrence L15: 3.4 s of the cameraman reading the Spanish line, picked up quietly on Ali's lav, transcribed as one stretched "okay"). Check the talent's lav level in 0.1 s steps around every reply to an agent line. A long quiet stretch at -45 to -50 dB between the talent's words is the crew reading. Trim the take to the talent's first word. To the reviewer this looks like "audio out of sync", because the voice plays while his lips don't move.
+
+## Lav goes dull when the talent moves (Concurrence, 2026-11-10)
+- Symptom: inside one line the voice suddenly sounds muffled or "pitched down" for a second or two, then clear again. Measured on L24: the lav's 3-8 kHz band fell 10-15 dB under the voice body, while the A cam mic stayed bright at the same moments. That is the lav under a sweater when he turns or leans, not the chain.
+- A fixed EQ can't follow it. `polish.unmuffle` runs in every bake: per frame, it lifts the 2-14 kHz bands back toward the piece's own clear vowels (85th percentile of its louder frames), only while he talks, smoothed over 0.25 s and capped at 10 dB. Rebake with `REBAKE=<pieces> BLEND=1 BAKE=1` (the blend adds the A cam mic on very dull pieces), then run `ppro_relink.py`.
+- Check that it worked: compare the HF/body ratio of baked vs raw in 0.5 s windows. Dull windows should come up about 4-8 dB, and clear windows stay put.
+
+## Cam A only means A on top, B kept under it (Concurrence, 2026-11-10)
+- The builder puts A on V2 and B on V1, and DISABLES the A clip wherever it chose B. So "remove cam B" left 14 disabled A clips: dark on the timeline and black on playback. When the editor wants A only: enable every A clip, and KEEP B on V1 underneath as the alternate angle. Never delete B.
+- Put B back without its sound: `createSubClip(name, inTicks, outTicks, 0, 1, 0)` (video only), then `overwriteClip` on V1. A plain overwrite of the B file would also drop its camera audio over A1.
+
+## ExtendScript gotchas found the hard way (2026-11-10)
+- `trackItem.move(seconds)` takes a plain number. If a script fails halfway, the moves before the error have ALREADY happened: re-read positions before running it again (one rerun shifted the cut twice).
+- Setting `trackItem.start` does not trim the head. It shortens the tail and keeps the inPoint. To trim a head, also set `trackItem.inPoint` to old in + trim, and check that out - in equals end - start.
+- Marker `start`/`end` take numbers (seconds), not Time objects.
+- `ok` is a reserved name inside Premiere's ExtendScript eval. Don't use it as a variable.
+- ffmpeg is not on the default PATH here. Use `/Volumes/T7/work/irl-retrenchment/_tools` (final_build.sh exports it).

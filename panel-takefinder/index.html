@@ -4,70 +4,87 @@
 <meta charset="utf-8">
 <title>Take Finder</title>
 <style>
-:root{--bg:#232323;--panel:#2c2c2c;--ink:#e8e8e8;--muted:#9a9a9a;--rule:#3a3a3a;--pick:#3fbf86;--bad:#ff6b5c;--warn:#f0a135;--flag:#f5c542}
+:root{--bg:#1d1d1d;--s1:#242424;--s2:#2b2b2b;--line:#333;--ink:#dedede;--ink2:#a3a3a3;--ink3:#6f6f6f;
+  --blue:#2d8ceb;--pick:#58b883;--bad:#e5675a;--warn:#d9a441;--flag:#d9b24c}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:12px/1.4 -apple-system,system-ui,sans-serif;user-select:none}
-header{position:sticky;top:0;background:var(--bg);padding:10px 10px 8px;border-bottom:1px solid var(--rule);z-index:1}
-.row{display:flex;gap:6px;align-items:center}
-h1{margin:0;font-size:15px;font-weight:800;flex:1}
-button{background:#3a3a3a;color:var(--ink);border:1px solid #4a4a4a;border-radius:4px;padding:5px 9px;font:inherit;cursor:pointer}
-button:hover{background:#464646}
-button.go{background:#2f6b4f;border-color:#3fbf86}
-button.use{background:#2b4a6b;border-color:#5a9be0}
-button.fl{background:#4d4320;border-color:var(--flag);color:#ffe9a8}
-button.wide{flex:1;text-align:left;font-weight:700}
-.attn{background:#4a2422;border-color:#ff6b5c;color:#ffd9d4}
-.myfl{background:#3f3818;border-color:var(--flag);color:#ffe9a8}
-#rebuild{width:100%;margin-top:6px;background:#2f6b4f;border-color:#3fbf86;font-weight:800;display:none}
-select{width:100%;margin-top:8px;background:#1b1b1b;color:var(--ink);border:1px solid #4a4a4a;border-radius:4px;padding:5px;font:inherit}
-textarea{width:100%;margin-top:6px;background:#1b1b1b;color:var(--ink);border:1px solid var(--flag);border-radius:4px;padding:6px;font:inherit;resize:vertical;min-height:52px;user-select:text}
-#line{padding:12px 10px 4px}
-#line .n{font-size:18px;font-weight:800}
-#line .who{color:var(--muted);margin-left:6px}
-#line .text{font-size:13px;font-weight:600;margin-top:4px}
-#line .check{color:var(--bad);font-weight:700;margin-top:4px}
-#hint{color:var(--muted);padding:14px 10px}
-#takes{padding:6px 10px 20px;display:grid;gap:8px}
-.take{background:var(--panel);border:2px solid transparent;border-radius:6px;padding:7px}
-.take.picked{border-color:var(--pick)}
-.take.chosen{border-color:#5a9be0}
-.take.feed{opacity:.5}
-.take.here{box-shadow:0 0 0 2px #fff inset}
-.pics{display:flex;gap:4px}
-.pics div{flex:1;position:relative}
-.pics img{width:100%;height:64px;object-fit:cover;border-radius:3px;display:block;background:#000}
-.pics span{position:absolute;left:4px;top:2px;font-weight:800;font-size:11px;text-shadow:0 1px 2px #000}
-.nopic{height:64px;display:grid;place-items:center;color:var(--muted);background:#191919;border-radius:3px}
-.head{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap}
-.head b{font-size:13px;flex:1}
-.tags{margin-top:3px;display:flex;flex-wrap:wrap;gap:2px 10px;font-weight:700}
-.t-pick{color:var(--pick)} .t-bad{color:var(--bad)} .t-warn{color:var(--warn)} .t-muted{color:var(--muted);font-weight:500} .t-use{color:#7db7f0}
-.said{color:var(--muted);margin-top:3px}
-.list{margin-top:6px;border:1px solid var(--rule);border-radius:4px;max-height:240px;overflow:auto;display:none}
-.list .it{display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border-top:1px solid var(--rule)}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--ink);font:11.5px/1.45 -apple-system,"SF Pro Text",system-ui,sans-serif;user-select:none;-webkit-font-smoothing:antialiased}
+header{position:sticky;top:0;z-index:2;background:var(--bg);padding:10px 12px 10px;border-bottom:1px solid var(--line)}
+.row{display:flex;gap:4px;align-items:center}
+h1{margin:0;flex:1;font-size:13px;font-weight:700;letter-spacing:-.01em;color:#f2f2f2}
+h1 small{font-size:10px;font-weight:500;color:var(--ink3);margin-left:4px}
+button{height:24px;padding:0 9px;background:transparent;color:var(--ink2);border:1px solid #3b3b3b;border-radius:3px;font:inherit;font-weight:500;cursor:pointer;white-space:nowrap}
+button:hover{color:var(--ink);border-color:#555;background:#262626}
+button:active{background:#2e2e2e}
+button.wide{flex:1;text-align:left;border-color:transparent;padding:0 8px;color:var(--ink2);font-weight:600}
+button.wide:hover{border-color:transparent;background:var(--s1)}
+.attn::before,.myfl::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:7px;vertical-align:1px}
+.attn::before{background:var(--bad)} .myfl::before{background:var(--flag)}
+button.fl{color:var(--flag);border-color:#4a412a}
+button.fl:hover{border-color:var(--flag);background:#2a2619}
+button.use{color:#8fc3f5;border-color:#2c4660}
+button.use:hover{border-color:var(--blue);background:#1d2a38}
+button.go{color:var(--ink)}
+#flagHere{flex:1}
+#rebuild{display:none;width:100%;height:28px;margin-top:8px;background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+#rebuild:hover{background:#3b97f0}
+select{width:100%;height:26px;margin-top:6px;padding:0 6px;background:var(--s1);color:var(--ink);border:1px solid #3b3b3b;border-radius:3px;font:inherit;outline:none}
+select:focus,textarea:focus{border-color:var(--blue)}
+textarea{width:100%;margin-top:6px;min-height:54px;padding:6px 8px;background:var(--s1);color:var(--ink);border:1px solid #3b3b3b;border-radius:3px;font:inherit;resize:vertical;outline:none;user-select:text}
+#flagBox{display:none;margin-top:8px;padding:8px;background:var(--s1);border-left:2px solid var(--flag)}
+#flagBox .ctx{color:var(--ink);font-weight:600}
+#status{min-height:15px;margin-top:6px;color:var(--ink3)}
+.list{display:none;margin-top:4px;max-height:260px;overflow:auto;background:var(--s1);border:1px solid var(--line);border-radius:3px}
+.list .it{display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border-top:1px solid var(--line)}
 .list .it:first-child{border-top:0}
-.list .it:hover{background:#333}
-.list .it.done{opacity:.45}
+.list .it:hover{background:var(--s2)}
+.list .it.done{opacity:.4}
 .list .it.done b{text-decoration:line-through}
-.list input{margin-top:2px;width:15px;height:15px;accent-color:var(--pick);flex:none;cursor:pointer}
+.list input{flex:none;width:13px;height:13px;margin:2px 0 0;accent-color:var(--pick);cursor:pointer}
 .list .txt{flex:1;cursor:pointer}
-.list b{display:block}
-.list .why{color:var(--bad)}
-.list .note{color:#ffe9a8}
-.list .x{color:var(--muted);cursor:pointer;padding:0 3px}
-.list .foot{display:flex;gap:6px;padding:7px 9px;border-top:1px solid var(--rule);background:#262626;position:sticky;bottom:0}
-#flagBox{display:none;margin-top:6px}
-#flagBox .ctx{color:var(--flag);font-weight:700}
-#status{color:var(--pick);min-height:14px;margin-top:6px}
+.list b{display:block;font-weight:600;color:var(--ink)}
+.list .why{color:var(--bad)} .list .note{color:var(--ink2)}
+.list .x{color:var(--ink3);cursor:pointer;padding:0 4px}
+.list .x:hover{color:var(--bad)}
+.list .foot{position:sticky;bottom:0;display:flex;padding:6px;border-top:1px solid var(--line);background:var(--s1)}
+#busy,#old{margin:10px 12px 0;padding:8px 10px;border-radius:3px;font-weight:600;background:var(--s1)}
+#busy{border-left:2px solid var(--bad);color:#f0c4be}
+#old{border-left:2px solid var(--warn);color:#ecd3a2}
+#line{padding:14px 12px 6px}
+#line .n{font-size:17px;font-weight:700;letter-spacing:-.02em;color:#f4f4f4}
+#line .who{margin-left:8px;color:var(--ink3);font-weight:500}
+#line .text{margin-top:5px;font-size:12.5px;line-height:1.5;color:var(--ink)}
+#line .check{margin-top:6px;color:var(--bad);font-weight:600}
+#hint{padding:28px 16px;color:var(--ink3);text-align:center;line-height:1.6}
+#takes{padding:6px 0 24px}
+.take{position:relative;display:grid;grid-template-columns:128px 1fr;column-gap:10px;padding:10px 12px;border-top:1px solid var(--line)}
+.take:hover{background:#212121}
+.take::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:transparent}
+.take.picked::before{background:var(--pick)}
+.take.chosen::before{background:var(--blue)}
+.take.here{background:var(--s1)}
+.take.feed{opacity:.45}
+.pics{grid-row:1/span 3;display:flex;flex-direction:column;gap:3px}
+.pics div{position:relative}
+.pics img{display:block;width:128px;height:68px;object-fit:cover;border-radius:2px;background:#000}
+.pics span{position:absolute;left:0;bottom:0;padding:1px 5px;font-size:9.5px;font-weight:600;color:#fff;background:rgba(0,0,0,.6);border-radius:0 2px 0 2px}
+.nopic{height:68px;display:grid;place-items:center;color:var(--ink3);background:#151515;border-radius:2px;font-size:10.5px}
+.head{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.head b{flex:1;min-width:70px;font-size:12px;font-weight:700;color:#f0f0f0}
+.tags{display:flex;flex-wrap:wrap;gap:1px 10px;margin-top:4px;font-weight:600}
+.tags:empty{display:none}
+.t-pick{color:var(--pick)} .t-bad{color:var(--bad)} .t-warn{color:var(--warn)} .t-muted{color:var(--ink3);font-weight:500} .t-use{color:#8fc3f5}
+.said{margin-top:4px;color:var(--ink2);line-height:1.5}
+::-webkit-scrollbar{width:8px;height:8px} ::-webkit-scrollbar-thumb{background:#3a3a3a;border-radius:4px} ::-webkit-scrollbar-track{background:transparent}
 </style>
 </head>
 <body>
 <header>
-  <div class="row"><h1>Take Finder <small id="ver" style="color:#777;font-weight:500">v7</small></h1><button id="back">Back to rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
-  <div class="row" style="margin-top:8px"><button id="attn" class="wide attn">Needs your attention</button><button id="myfl" class="wide myfl">My flags</button></div>
+  <div class="row"><h1>Take Finder <small id="ver">v8</small></h1><button id="back" title="Back to the rough cut">Rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
+  <div class="row" style="margin-top:10px"><button id="attn" class="wide attn">Needs your attention</button><button id="myfl" class="wide myfl">My flags</button></div>
   <div id="attnList" class="list"></div>
   <div id="flList" class="list"></div>
-  <div class="row" style="margin-top:6px"><button id="flagHere" class="fl" style="flex:1">Flag this spot</button></div>
+  <div class="row" style="margin-top:6px"><button id="flagHere" class="fl">Flag this spot</button></div>
   <div id="flagBox"><div class="ctx" id="flagCtx"></div><textarea id="flagNote" placeholder="What's wrong? e.g. cameraman talking at the end, wind, cut too tight"></textarea>
     <div class="row" style="margin-top:4px"><button id="flagSave" class="fl">Save flag</button><button id="flagCancel">Cancel</button></div></div>
   <button id="rebuild"></button>
@@ -75,15 +92,15 @@ textarea{width:100%;margin-top:6px;background:#1b1b1b;color:var(--ink);border:1p
   <select id="pickLine"></select>
   <div id="status"></div>
 </header>
-<div id="busy" style="display:none;margin:8px 10px 0;padding:8px;border:1px solid var(--bad);border-radius:4px;background:#4a2422;color:#ffd9d4;font-weight:700"></div>
-<div id="old" style="display:none;margin:8px 10px 0;padding:8px;border:1px solid var(--warn);border-radius:4px;color:#ffd79a;font-weight:700">
+<div id="busy" style="display:none"></div>
+<div id="old" style="display:none">
   You're in the OLD copy (before your last swap). <button id="openNew" style="margin-left:4px">Open the current rough cut</button></div>
 <div id="line"></div>
 <div id="hint">Click any clip in the rough cut or the scrub. Its other takes show up here.</div>
 <div id="takes"></div>
 <script>
 // any error shows on the panel itself, so a silent failure can't hide again
-window.onerror = function(m, u, l){ var h = document.getElementById("hint"); h.style.display = "block"; h.style.color = "#ff6b5c";
+window.onerror = function(m, u, l){ var h = document.getElementById("hint"); h.style.display = "block"; h.style.color = "#e5675a";
   h.textContent = "Panel error: " + m + " (line " + l + ")"; };
 </script>
 <script>
@@ -121,7 +138,7 @@ async function load(){
   await pickTF();
   const raw = await ev(readJS(TF));
   try { D = JSON.parse(raw); } catch (e) {
-    $("hint").style.color = "#ff6b5c";
+    $("hint").style.color = "#e5675a";
     $("hint").textContent = raw === "" ? "No takes for this project yet. Ask Claude to build its scrub first (data is kept per project)."
       : "Couldn't load takes: " + String(raw).slice(0, 120); return; }
   stamp = await ev(`(function(){var f=new File(${JSON.stringify(TF)});return f.exists?String(f.modified.getTime()):"";})()`);
@@ -246,7 +263,7 @@ function show(id, hereTake){
   $("takes").innerHTML = l.takes.map((t, i) => {
     const chosen = ov && ov.take === t.take && ov.src === t.src;
     const pics = Object.keys(t.thumbs || {}).sort().map(c => t.thumbs[c] ?
-      `<div><img src="file://${encodeURI(t.thumbs[c])}"><span>${c} camera</span></div>` : "").join("") || '<div class="nopic">sound only</div>';
+      `<div><img src="file://${encodeURI(t.thumbs[c])}"><span>${c} cam</span></div>` : "").join("") || '<div class="nopic">sound only</div>';
     const tags = [t.picked ? '<span class="t-pick">In your rough cut</span>' : "",
                   chosen && !t.picked ? '<span class="t-use">Your choice, goes in on the next rebuild</span>' : "",
                   t.part_feed ? `<span class="t-bad">Cameraman reads part of it: "${esc(t.part_feed)}" (skip)</span>`

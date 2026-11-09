@@ -100,3 +100,36 @@ def detick(path, out, lo=4000, hi=12000, jump_db=7.0, max_ms=30, depth_db=-14.0)
     y = x - (1 - 10 ** (depth_db / 20)) * gs * band
     y.astype(np.float32).tofile(out + ".raw"); _write(out + ".raw", out)
     return k
+def unmuffle(path, out, max_db=10.0, smooth_s=0.25):
+    """A lav under a sweater goes dull for a second or two whenever the talent turns or leans (Concurrence L24 1:35:
+    the 3-8 kHz band fell 10-15 dB under the voice body while the A cam mic stayed bright, so it was the lav, not the
+    chain). A fixed EQ can't follow that. Per 21 ms frame, the top bands are measured against the voice body (200 Hz-1 kHz)
+    and lifted back toward the piece's own clear vowels (85th percentile of its louder frames), only while he is talking, smoothed over
+    a quarter second and capped, so a naturally soft word never turns hissy and pauses keep their noise floor."""
+    from scipy.signal import stft, istft
+    x = _read(path); nper = 1024
+    if len(x) < nper * 8: _copy(path, out); return 0.0
+    f, t, Z = stft(x, SR, nperseg=nper, noverlap=nper * 3 // 4)
+    P = np.abs(Z) ** 2 + 1e-14
+    body = P[(f >= 200) & (f < 1000)].sum(0)
+    bands = [(2000, 4000), (4000, 8000), (8000, 14000)]
+    lvl = 10 * np.log10(body); speech = lvl > np.percentile(lvl, 90) - 25
+    if speech.sum() < 10: _copy(path, out); return 0.0
+    k = max(1, int(smooth_s / (t[1] - t[0]))); win = np.ones(k) / k
+    gain_db = np.zeros((len(bands), len(t)))
+    for i, (a, b) in enumerate(bands):
+        tilt = 10 * np.log10(P[(f >= a) & (f < b)].sum(0) / body)
+        voiced = speech & (lvl > np.percentile(lvl[speech], 50))   # vowels, not the s and t frames (those are bright by nature)
+        ref = np.percentile(tilt[voiced], 85)
+        d = np.clip(ref - tilt, 0, max_db) * speech
+        d = np.convolve(d, win, "same"); s = np.convolve(speech.astype(float), win, "same")
+        gain_db[i] = np.where(s > 0.05, d / np.maximum(s, 1e-3) * np.minimum(1, s * 2), 0)   # mean over the talking frames only
+    cen = np.array([np.sqrt(a * b) for a, b in bands])
+    G = np.zeros_like(P)
+    for j in range(len(t)):
+        G[:, j] = np.interp(np.log(np.maximum(f, 1)), np.log(np.r_[1400, cen]), np.r_[0, gain_db[:, j]], left=0, right=gain_db[-1, j])
+    _, y = istft(Z * 10 ** (G / 20), SR, nperseg=nper, noverlap=nper * 3 // 4)
+    y = y[:len(x)].astype(np.float32); y.tofile(out + ".raw"); _write(out + ".raw", out)
+    return float(np.mean(gain_db[1][speech]))
+def _copy(a, b):
+    import shutil; shutil.copyfile(a, b)
