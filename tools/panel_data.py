@@ -51,7 +51,7 @@ for L, ln in LINES.items():
                       takes=sorted(takes, key=lambda t: not t["picked"])))
 cfg = os.path.expanduser("~/.shown"); os.makedirs(cfg, exist_ok=True)
 try:   # earlier builds' pieces stay named: the old copy in Sequences/Old (and hand-placed clips) still use them
-    _prev = json.load(open(os.path.join(cfg, "takefinder.json")))
+    _pp = os.path.join(cfg, "takefinder", PJ + ".json"); _prev = json.load(open(_pp if os.path.exists(_pp) else os.path.join(cfg, "takefinder.json")))
     _old_files = _prev.get("files", {}) if _prev.get("work") == W else {}
 except Exception: _old_files = {}
 data = dict(client=CLIENT, rc_seq=os.environ.get("RC_SEQ", f"{CLIENT.upper()} REVIEW 1 - Rough cut (picked takes)"),
@@ -60,8 +60,13 @@ data = dict(client=CLIENT, rc_seq=os.environ.get("RC_SEQ", f"{CLIENT.upper()} RE
             scrubs=[sc["seq"] for sc in SCRUBS],
             files={**_old_files, **{k: v for sc in SCRUBS[1:] for k, v in pieces(os.path.join(W, sc["xml"]), json.load(open(os.path.join(W, sc["report"])))).items()}, **pieces(os.path.join(W, os.environ.get("SCRUB_XML", f"{PJ}_SCRUB_grid.xml")), SCRUB),
                    **pieces(os.path.join(W, os.environ.get("RC_XML", f"{PJ}_RC_clean.xml")), list(RC.values()))})
+# one data file PER PROJECT (the panel opens the one matching the open Premiere project's name); takefinder.json
+# stays as the latest, for older panels. Concurrence 2026-11-09: the panel kept showing Notch.
+os.makedirs(os.path.join(cfg, "takefinder"), exist_ok=True)
+data["project"] = PJ
+json.dump(data, open(os.path.join(cfg, "takefinder", PJ + ".json"), "w"), indent=1)
 json.dump(data, open(os.path.join(cfg, "takefinder.json"), "w"), indent=1)
-print(f"Take Finder data: {len(lines)} lines, {len(data['files'])} named pieces -> ~/.shown/takefinder.json")
+print(f"Take Finder data: {len(lines)} lines, {len(data['files'])} named pieces -> ~/.shown/takefinder/{PJ}.json")
 # the panel's "Rebuild rough cut" button opens this in Terminal (Premiere can open a file, not run a script)
 cmd = os.path.join(W, "Rebuild rough cut.command")
 open(cmd, "w").write(f'#!/bin/bash\n"{os.path.join(os.path.dirname(os.path.abspath(__file__)), "rebuild_rc.sh")}" "{W}" "{CLIENT}"\n'

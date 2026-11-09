@@ -63,7 +63,7 @@ textarea{width:100%;margin-top:6px;background:#1b1b1b;color:var(--ink);border:1p
 </head>
 <body>
 <header>
-  <div class="row"><h1>Take Finder <small id="ver" style="color:#777;font-weight:500">v6.2</small></h1><button id="back">Back to rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
+  <div class="row"><h1>Take Finder <small id="ver" style="color:#777;font-weight:500">v7</small></h1><button id="back">Back to rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
   <div class="row" style="margin-top:8px"><button id="attn" class="wide attn">Needs your attention</button><button id="myfl" class="wide myfl">My flags</button></div>
   <div id="attnList" class="list"></div>
   <div id="flList" class="list"></div>
@@ -71,6 +71,7 @@ textarea{width:100%;margin-top:6px;background:#1b1b1b;color:var(--ink);border:1p
   <div id="flagBox"><div class="ctx" id="flagCtx"></div><textarea id="flagNote" placeholder="What's wrong? e.g. cameraman talking at the end, wind, cut too tight"></textarea>
     <div class="row" style="margin-top:4px"><button id="flagSave" class="fl">Save flag</button><button id="flagCancel">Cancel</button></div></div>
   <button id="rebuild"></button>
+  <select id="pickScrub" title="Which scrub Show in scrub jumps to (switches by itself when you open a scrub)"></select>
   <select id="pickLine"></select>
   <div id="status"></div>
 </header>
@@ -89,6 +90,7 @@ window.onerror = function(m, u, l){ var h = document.getElementById("hint"); h.s
 (function(){   // own scope: nothing here can clash with Premiere's panel globals
 const CEPHOST = window.__adobe_cep__;   // not "cep": Premiere's panels already define a global cep
 let D = null, current = null, lastKey = "", here = null, lastSeen = { seq: "", t: 0 }, stamp = "", tick = 0;
+let SC = null, lastCut = null;   // current scrub; the last cut (non-scrub) sequence you were in
 let STATE = { done: {} }, FLAGS = [], OVR = {}, flagCtx = null;
 const $ = id => document.getElementById(id);
 const ev = src => new Promise(r => { if (!CEPHOST) { r("__nocep"); return; } CEPHOST.evalScript(src, r); setTimeout(() => r("__timeout"), 8000); });
@@ -105,18 +107,30 @@ const ovrF = () => D.work + "/overrides.json";
 const lineOf = id => D && D.lines.find(x => x.id === id);
 const pickedTake = l => l.takes.find(t => t.picked);
 
+let TF = "~/.shown/takefinder.json";
+async function pickTF(){   // the data file for the OPEN Premiere project (one per project), else the latest one
+  const r = await ev(`(function(){var n=String(app.project.name).toLowerCase().replace(/\.prproj$/,"").replace(/--[0-9a-f-]+$/,"");
+    var d=new Folder("~/.shown/takefinder"),fs=d.exists?d.getFiles("*.json"):[];for(var i=0;i<fs.length;i++){var k=decodeURI(fs[i].name).replace(/\.json$/,"");
+    if(n.indexOf(k)==0||k.indexOf(n)==0)return fs[i].fsName;}
+    var p=app.project.path?String(app.project.path).toLowerCase():"";for(var i=0;i<fs.length;i++){var k=decodeURI(fs[i].name).replace(/\.json$/,"");if(p.indexOf("/"+k+"/")>=0)return fs[i].fsName;}
+    return "~/.shown/takefinder.json";})()`);
+  TF = r || "~/.shown/takefinder.json";
+}
 async function load(){
   $("hint").textContent = "Loading takes...";
-  const raw = await ev(readJS("~/.shown/takefinder.json"));
+  await pickTF();
+  const raw = await ev(readJS(TF));
   try { D = JSON.parse(raw); } catch (e) {
     $("hint").style.color = "#ff6b5c";
     $("hint").textContent = raw === "" ? "No take data yet. Ask Claude to build the scrub first."
       : "Couldn't load takes: " + String(raw).slice(0, 120); return; }
-  stamp = await ev(`(function(){var f=new File("~/.shown/takefinder.json");return f.exists?String(f.modified.getTime()):"";})()`);
+  stamp = await ev(`(function(){var f=new File(${JSON.stringify(TF)});return f.exists?String(f.modified.getTime()):"";})()`);
   STATE = await readJSON(STATE_F, { done: {} }); STATE.done = STATE.done || {};
   FLAGS = await readJSON(FLAGS_F, []);
   OVR = D.work ? await readJSON(ovrF(), {}) : {};
   $("hint").style.color = ""; $("hint").textContent = "Click any clip in the rough cut or the scrub. Its other takes show up here.";
+  const scr = D.scrubs || [D.scrub_seq]; if (!SC || scr.indexOf(SC) < 0) SC = (STATE.scrub && scr.indexOf(STATE.scrub) >= 0) ? STATE.scrub : scr[0];
+  $("pickScrub").innerHTML = scr.map(n => `<option value="${esc(n)}"${n === SC ? " selected" : ""}>Scrub: ${esc(n.replace(/^.*?REVIEW \d+ - /, ""))}</option>`).join("");
   $("pickLine").innerHTML = '<option value="">Browse a line...</option>' + D.lines.map(l =>
     `<option value="${l.id}">Line ${l.num}: ${esc(l.text.slice(0, 60))}</option>`).join("");
   drawAttn(); drawFlags(); drawRebuild();
@@ -180,7 +194,7 @@ $("flagHere").addEventListener("click", async () => {   // the playhead (or sele
   const r = await ev(SEL); const [seq, ts, nm] = String(r).split("|"); const t = parseFloat(ts);
   if (!seq || isNaN(t)) { status("Open the rough cut or the scrub first"); return; }
   const id = whereIs(seq, t, nm); const l = id && lineOf(id.line);
-  const name = seq === D.rc_seq ? "Rough cut" : seq === D.scrub_seq ? "Scrub" : seq;
+  const name = seq === D.rc_seq ? "Rough cut" : (D.scrubs || []).indexOf(seq) >= 0 ? "Scrub" : seq;
   const tk = l && id.take ? l.takes.find(x => x.take === id.take) : null;
   openFlag({ seq, t, line: l ? l.id : null, take: id ? id.take : null,
     where: `${name} at ${mmss(t)}` + (l ? `, Line ${l.num}` + (tk ? `, take ${tk.take} of ${tk.of}` : "") : "") });
@@ -189,10 +203,13 @@ $("takes").addEventListener("click", async e => {
   const b = e.target.closest("button"); if (!b) return;
   const l = lineOf(current), t = l.takes[+b.dataset.i];
   if (b.classList.contains("go")) {
-    const r = await ev(jumpJS(D.scrub_seq, t.scrub_at + 0.05));
-    status(r === "ok" ? `Scrub: Line ${l.num}, take ${t.take}` : "Couldn't find the scrub sequence");
+    let seq = SC, at = atIn(t, SC);
+    if (at == null) { seq = (D.scrubs || [D.scrub_seq]).find(n => atIn(t, n) != null); at = seq ? atIn(t, seq) : null; }
+    if (at == null) { status("This take isn't in any scrub"); return; }
+    const r = await ev(jumpJS(seq, at + 0.05));
+    status(r === "ok" ? `${seq === SC ? "" : "Not in this scrub, opened the full one. "}Line ${l.num}, take ${t.take}` : "Couldn't find the scrub sequence");
   } else if (b.classList.contains("fl")) {
-    openFlag({ seq: D.scrub_seq, t: t.scrub_at, line: l.id, take: t.take, where: `Line ${l.num}, take ${t.take} of ${t.of} (scrub at ${mmss(t.scrub_at)})` });
+    openFlag({ seq: SC, t: atIn(t, SC) != null ? atIn(t, SC) : t.scrub_at, line: l.id, take: t.take, where: `Line ${l.num}, take ${t.take} of ${t.of} (scrub at ${mmss(t.scrub_at)})` });
   } else if (b.classList.contains("use")) {
     if (OVR[l.id] && OVR[l.id].take === t.take) { delete OVR[l.id]; status(`Line ${l.num}: back to Claude's pick`); }
     else { OVR[l.id] = { take: t.take, src: t.src, how: "Use this take" }; status(`Line ${l.num}: take ${t.take} goes in on the next rebuild`); }
@@ -243,6 +260,7 @@ function show(id, hereTake){
       <div class="tags">${tags}</div><div class="said">"${esc(t.text)}"</div></div>`;
   }).join("");
 }
+const atIn = (t, seq) => (t.at && t.at[seq] != null) ? t.at[seq] : (seq === D.scrub_seq ? t.scrub_at : null);
 function jumpJS(seqName, sec){
   const ticks = Math.round(sec * 254016000000);
   return `(function(){var q=null;for(var i=0;i<app.project.sequences.numSequences;i++)if(app.project.sequences[i].name==${JSON.stringify(seqName)})q=app.project.sequences[i];
@@ -250,11 +268,12 @@ function jumpJS(seqName, sec){
 }
 $("back").addEventListener("click", async () => {
   const l = D && lineOf(current);
-  const r = await ev(jumpJS(D.rc_seq, l && l.rc_at != null ? l.rc_at + 0.05 : 0));
+  const r = await ev(jumpJS(lastCut || D.rc_seq, l && l.rc_at != null && (!lastCut || lastCut === D.rc_seq) ? l.rc_at + 0.05 : 0));
   status(r === "ok" ? "Back in the rough cut" : "Couldn't find the rough cut sequence");
 });
 $("openNew").addEventListener("click", async () => { const r = await ev(jumpJS(D.rc_seq, 0)); status(r === "ok" ? "Opened the current rough cut" : "Couldn't find it"); });
 $("reload").addEventListener("click", () => { load(); status("Reloaded"); });
+$("pickScrub").addEventListener("change", async e => { SC = e.target.value; STATE.scrub = SC; await writeJSON(STATE_F, STATE); if (current) show(current, here); status("Show in scrub now goes to: " + SC.replace(/^.*?REVIEW \d+ - /, "")); });
 $("pickLine").addEventListener("change", e => e.target.value && show(e.target.value, null));
 // follow Premiere: the selected clip (or the playhead) picks the line shown here. The sound clip's FILE names the
 // take, so a take you dragged from the scrub into the rough cut by hand is still recognised after you move things.
@@ -269,22 +288,25 @@ const SEL = `(function(){var q=app.project.activeSequence;if(!q)return "";var s=
 function whereIs(seq, t, nm){
   const f = D.files && D.files[nm]; if (f) return { line: f[0], take: f[1] };
   if (seq === D.rc_seq) { const l = D.lines.find(x => x.rc_at != null && x.rc_at <= t && t < x.rc_at + x.rc_dur); return l ? { line: l.id, take: null } : null; }
-  if (seq === D.scrub_seq) for (const l of D.lines) { const tk = l.takes.find(x => x.scrub_at <= t && t < x.scrub_at + x.dur); if (tk) return { line: l.id, take: tk.take }; }
+  if ((D.scrubs || [D.scrub_seq]).indexOf(seq) >= 0) for (const l of D.lines) { const tk = l.takes.find(x => { const a = atIn(x, seq); return a != null && a <= t && t < a + x.dur; }); if (tk) return { line: l.id, take: tk.take }; }
   return null;
 }
 let lastPH = null, lastSel = "", lastSeq = "";
 async function poll(){
   try {
     if (D) {
+      if (tick % 8 === 0) { const old = TF; await pickTF(); if (TF !== old) { await load(); status("Project changed. Panel switched to its takes."); } }
       if (++tick % 4 === 0) {   // a rebuild rewrote the data: reload by itself
-        const s = await ev(`(function(){var f=new File("~/.shown/takefinder.json");return f.exists?String(f.modified.getTime()):"";})()`);
+        const s = await ev(`(function(){var f=new File(${JSON.stringify(TF)});return f.exists?String(f.modified.getTime()):"";})()`);
         if (s && stamp && s !== stamp) { await load(); status("Rough cut rebuilt. Panel updated."); }
       const b = await ev(readJS("~/.shown/busy.json")); let busy = null; try { busy = b ? JSON.parse(b) : null; } catch (e) {}
       $("busy").style.display = busy ? "block" : "none";
       if (busy) $("busy").textContent = `Rebuilding ${busy.seq} (since ${busy.since}). Hold your edits in it until this goes away: edits made now won't be replaced, the rebuild stops instead.`;
       }
       const r = String(await ev(SEL)); const [seq, ps, pn, ss, sn] = r.split("|"); const ph = parseFloat(ps), st = parseFloat(ss);
-      if (seq && seq !== lastSeq) { lastSeq = seq; $("old").style.display = /\(before your last swap\)/.test(seq) ? "block" : "none"; }
+      if (seq && seq !== lastSeq) { lastSeq = seq;
+        if ((D.scrubs || []).indexOf(seq) >= 0 && seq !== SC) { SC = seq; $("pickScrub").value = seq; }
+        else if ((D.scrubs || []).indexOf(seq) < 0) lastCut = seq; $("old").style.display = /\(before your last swap\)/.test(seq) ? "block" : "none"; }
       let w = null;
       const selKey = seq + "|" + ss + "|" + sn;
       if (!isNaN(ph) && (lastPH === null || Math.abs(ph - lastPH) > 0.04)) { lastPH = ph; w = whereIs(seq, ph, pn); }
