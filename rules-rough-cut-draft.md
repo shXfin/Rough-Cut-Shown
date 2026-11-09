@@ -353,3 +353,9 @@ Vision
 - Cut to B on a pause or breath, never mid-word; hold B at least ~2-3 s; come back to A at the next sentence.
 - Never cut A -> B -> A on near-identical framings (it reads as a jump). B must differ by angle (~30 deg) or size.
 - Rough cut default: A only, plus B where rules 1 and 4 force it. Leave rules 2 and 3 to the editor's taste.
+- **Weak text-sync pairings are wrong pairings (Concurrence 0:48).** textsync keeps any camera clip that shares a few
+  4-word phrases with a recorder file. With one founder repeating lines ("let me show you how it works" x21), short
+  phrases recur across takes and a clip got paired with the WRONG take (6-7 matches), so the picture showed another
+  take. Rule: a pairing needs >= 30 matches, or its camera audio must correlate with the recorder (> 0.55) over the
+  clip. Drop the rest BEFORE building. Then check every rough-cut line: camera audio vs recorder at the take, lag
+  within 40 ms and correlation > 0.6, else flag. (Concurrence: 14 A and 12 B false pairings removed.)
