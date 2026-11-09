@@ -379,3 +379,7 @@ Vision
   matching its audio against every take (log-envelope correlation > 0.6, then keep only matches that run in script
   order: short lines otherwise match the wrong spot). Mark them in the 3-best scrub as "EDITOR PICK" (and add the
   take if it isn't in our top 3) so the producer can compare. Add section markers (HOOK, AHA 1/2/3, CLOSE) too.
+- **Scene continuity beats take quality.** Lines that belong to one scene (script notes like "OUTFIT SWITCH", "1 month
+  later", a new location) must all come from that scene's setup. Concurrence L35+L36 are the couch follow-up call
+  (clip C030); L36 had also been read in the office, and picking that read broke the scene (outfit and room jump).
+  Detect setups from the camera clips (location/outfit changes) and only pick takes from the line's scene.
