@@ -113,8 +113,8 @@ async function pickTF(){   // the data file for the OPEN Premiere project (one p
     var d=new Folder("~/.shown/takefinder"),fs=d.exists?d.getFiles("*.json"):[];for(var i=0;i<fs.length;i++){var k=decodeURI(fs[i].name).replace(/\.json$/,"");
     if(n.indexOf(k)==0||k.indexOf(n)==0)return fs[i].fsName;}
     var p=app.project.path?String(app.project.path).toLowerCase():"";for(var i=0;i<fs.length;i++){var k=decodeURI(fs[i].name).replace(/\.json$/,"");if(p.indexOf("/"+k+"/")>=0)return fs[i].fsName;}
-    return "~/.shown/takefinder.json";})()`);
-  TF = r || "~/.shown/takefinder.json";
+    return "";})()`);
+  TF = r || "~/.shown/takefinder/none.json";   // no data for THIS project: never show another project's takes
 }
 async function load(){
   $("hint").textContent = "Loading takes...";
@@ -122,7 +122,7 @@ async function load(){
   const raw = await ev(readJS(TF));
   try { D = JSON.parse(raw); } catch (e) {
     $("hint").style.color = "#ff6b5c";
-    $("hint").textContent = raw === "" ? "No take data yet. Ask Claude to build the scrub first."
+    $("hint").textContent = raw === "" ? "No takes for this project yet. Ask Claude to build its scrub first (data is kept per project)."
       : "Couldn't load takes: " + String(raw).slice(0, 120); return; }
   stamp = await ev(`(function(){var f=new File(${JSON.stringify(TF)});return f.exists?String(f.modified.getTime()):"";})()`);
   STATE = await readJSON(STATE_F, { done: {} }); STATE.done = STATE.done || {};
