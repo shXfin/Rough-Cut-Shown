@@ -28,7 +28,15 @@ def pieces(xml, report):   # audio piece file name -> (line, take): lets the pan
         r = next((x for x in report if abs(x["at"] - at) < 0.06), None)
         if r and name not in out: out[name] = [r["line"], r["take"]]
     return out
+_PX = {}
+def _proxy_for(path):   # camera RAW (Canon .CRM etc.) can't be read by ffmpeg: use its proxy file for thumbnails
+    if not path.lower().endswith((".crm", ".r3d", ".braw")): return path
+    d = os.path.join(os.path.dirname(path), "Proxies"); b = os.path.splitext(os.path.basename(path))[0]
+    for n in (b + "_1_Proxy.mov", b + ".mov", b + "_Proxy.mov"):
+        if os.path.exists(os.path.join(d, n)): return os.path.join(d, n)
+    return path
 def thumb(path, sec, name):
+    path = _proxy_for(path)
     out = os.path.join(TH, name)
     if not os.path.exists(out):
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{max(sec, 0):.2f}", "-i", path, "-frames:v", "1",
