@@ -340,3 +340,16 @@ Vision
 - **Resolve proxies for Premiere:** timeline resolution must match the camera shape (1280x676 for 17:9), else the
   proxy gets black bars inside. Render Individual clips, ProRes 422 Proxy, Source name, 4 audio channels, no
   directory levels. Premiere accepts them with attachProxy; export still uses the RAW.
+
+## When to cut to cam B (2026-11-09, measured + researched)
+- Measured: Concurrence's editor rough cut (RoughCut_v1, 3:54) uses cam B ZERO times; every shot is A (the hook's
+  "twin on the glass" is A cam plus VFX). Notch's launched cut: 2 B shots in the whole video. So: A is the default,
+  B is the exception, never a rhythm ("switch every line" was already flagged as abrupt).
+- Use B only for a reason, and name the reason in the marker:
+  1. Hide a cut INSIDE one line or a take change mid-sentence, where A would jump-cut (same framing both sides).
+  2. A section change or a new beat (hook -> demo, demo -> founder story) as a one-shot reset.
+  3. A moment that needs a different feel: an aside, a reaction, the founder looking off at something (phone, screen).
+  4. A cam is unusable on the best take (soft, blink, slate, crew in frame) but B is clean.
+- Cut to B on a pause or breath, never mid-word; hold B at least ~2-3 s; come back to A at the next sentence.
+- Never cut A -> B -> A on near-identical framings (it reads as a jump). B must differ by angle (~30 deg) or size.
+- Rough cut default: A only, plus B where rules 1 and 4 force it. Leave rules 2 and 3 to the editor's taste.
