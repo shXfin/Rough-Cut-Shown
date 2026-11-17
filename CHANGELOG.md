@@ -4,6 +4,13 @@ Every change to the rough-cut agent gets an entry here, newest first, in the sam
 
 ## 2026-11-18
 
+### Fixed
+- **Take Finder v18:** finds the right take from any child sequence, and does no background work.
+  - The sequence list refreshes when you click into the panel (no timer), and Premiere is only polled while Follow is on.
+  - A child pointing at the originals now matches a parent built from the proxies (or the other way round): it tries the exact media file first, then the same file name in any folder with any extension. Before, every conformed clip said "That clip's media isn't in the parent".
+  - A clip left selected in the child no longer hijacks every lookup; a selection only counts when it is under the playhead.
+  - The top visible clip under the playhead wins. Lower or switched-off clips and audio only count when the top clip's take is more than a second further off. Hidden tracks are skipped.
+
 ### Added
 - Rules for export prep:
   - grade on the originals, not only on proxies

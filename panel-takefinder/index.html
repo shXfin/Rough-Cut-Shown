@@ -53,7 +53,7 @@ button.on{color:var(--pick);border-color:var(--pick)}
   <div id="list"></div>
 </div>
 <script>
-// Take Finder v15. Works on any project, no per-project data: you choose the parent (full scrub) and the child.
+// Take Finder v18. Works on any project, no per-project data: you choose the parent (full scrub) and the child.
 // A clip in the child is matched to the parent by its media file + source time, so it finds the exact spot
 // even after trims, moves and ripple edits. Takes of the same line are listed from the parent's label clips.
 const CEP = window.__adobe_cep__;
@@ -72,6 +72,7 @@ const JSX_LIB = `function tf_json(v){ var t=typeof v; if(v===null||v===undefined
 function tf_seq(id){ var p=app.project; for(var i=0;i<p.sequences.numSequences;i++){ if(p.sequences[i].sequenceID==id) return p.sequences[i]; } return null; }
 function tf_isLabel(n){ return /\\.(png|jpg|jpeg|psd|tif|tiff)$/i.test(n); }
 function tf_media(k){ try{ return k.projectItem ? k.projectItem.getMediaPath() : ""; }catch(e){ return ""; } }
+function tf_key(p){ var n=String(p), i=Math.max(n.lastIndexOf("/"), n.lastIndexOf("\\\\")); n=n.substring(i+1); var d=n.lastIndexOf("."); if(d>0) n=n.substring(0,d); return n.toLowerCase(); }   // file name without folder or extension: a proxy and its original share it
 function tf_speed(k){ try{ var s=k.getSpeed(); return s>0?s:1; }catch(e){ return 1; } }
 function tf_inSrc(k){ return k.inPoint.seconds*tf_speed(k); }   // Premiere reports in points of speed-changed clips divided by the speed
 // clips under time t in a sequence (selected clips win), as [media, srcTime, isVideo, name]
@@ -79,14 +80,16 @@ function tf_under(s, t){
   var out=[], sel=null; try{ sel=s.getSelection(); }catch(e){}
   if(sel && sel.length){
     for(var i=0;i<sel.length;i++){ var k=sel[i]; if(!k.projectItem || tf_isLabel(k.name)) continue;
-      var tt=(t>=k.start.seconds && t<k.end.seconds)?t:(k.start.seconds+k.end.seconds)/2;
-      out.push([tf_media(k), tf_inSrc(k)+(tt-k.start.seconds)*tf_speed(k), k.mediaType=="Video", k.name]); }
+      if(!(t>=k.start.seconds-0.001 && t<k.end.seconds)) continue;   // a leftover selection away from the playhead doesn't count
+      out.push([tf_media(k), tf_inSrc(k)+(t-k.start.seconds)*tf_speed(k), k.mediaType=="Video", k.name]); }
     if(out.length) return out;
   }
+  // top visible video first, then lower video, then audio; switched-off clips and hidden tracks are skipped
   var groups=[s.videoTracks,s.audioTracks];
-  for(var g=0;g<2;g++) for(var i=groups[g].numTracks-1;i>=0;i--){ var tr=groups[g][i];
-    for(var c=0;c<tr.clips.numItems;c++){ var k=tr.clips[c];
-      if(k.start.seconds<=t+0.001 && k.end.seconds>t+0.001 && k.projectItem && !tf_isLabel(k.name))
+  for(var g=0;g<2;g++) for(var i=groups[g].numTracks-1;i>=0;i--){ var tr=groups[g][i], hid=false; try{ hid=tr.isMuted(); }catch(e){}
+    if(hid) continue;
+    for(var c=0;c<tr.clips.numItems;c++){ var k=tr.clips[c], off=false; try{ off=k.disabled; }catch(e){}
+      if(!off && k.start.seconds<=t+0.001 && k.end.seconds>t+0.001 && k.projectItem && !tf_isLabel(k.name))
         out.push([tf_media(k), tf_inSrc(k)+(t-k.start.seconds)*tf_speed(k), g==0, k.name]); } }
   return out;
 }
@@ -99,13 +102,13 @@ function tf_match(pid, cid){
   else t=C.getPlayerPosition().seconds;
   var under=tf_under(C,t); if(!under.length) return tf_json({err:"No clip under the playhead in the child."});
   var best=null, groups=[P.videoTracks,P.audioTracks];
-  for(var u=0;u<under.length;u++){ var med=under[u][0], src=under[u][1]; if(!med) continue;
+  for(var u=0;u<under.length;u++){ var med=under[u][0], src=under[u][1]; if(!med) continue;   // under[] is top visible first
     for(var g=0;g<2;g++) for(var i=0;i<groups[g].numTracks;i++){ var tr=groups[g][i];
-      for(var c=0;c<tr.clips.numItems;c++){ var k=tr.clips[c]; if(tf_media(k)!=med) continue;
+      for(var c=0;c<tr.clips.numItems;c++){ var k=tr.clips[c], km=tf_media(k), same=(km==med); if(!same && (!km || tf_key(km)!=tf_key(med))) continue;
         var sp=tf_speed(k), a=tf_inSrc(k), b=a+(k.end.seconds-k.start.seconds)*sp;
         var d = src<a ? a-src : (src>b ? src-b : 0);
         var pt = k.start.seconds + (Math.min(Math.max(src,a),b)-a)/sp;
-        var score = d + (under[u][2]?0:0.001) + (g==0?0:0.0005);
+        var score = d + u*1.0 + (g==0?0:0.0005) + (same?0:0.0001);   // top clip wins unless its take is over 1 s further off than a lower clip's; exact file before same-named original/proxy
         if(!best || score<best.score) best={score:score, dist:d, at:pt, name:k.name, child:under[u][3], src:src}; } } }
   if(!best) return tf_json({err:"That clip's media isn't in the parent."});
   // label clips around that spot (line/take labels on a top track), to list the line's takes
@@ -164,17 +167,17 @@ async function goParent(at){
 }
 $("find").onclick = async () => { const r = await lookup(); if (r && !r.err) goParent(r.at); };
 $("back").onclick = async () => { const c = $("child").value; if (!c) return; await jsx(`tf_go(${JSON.stringify(c)},${back && back.id === c ? back.t : 0})`); status("Back in the child."); };
-$("follow").onclick = () => { following = !following; $("follow").classList.toggle("on", following); status(following ? "Following the child's playhead." : "Follow off."); };
+$("follow").onclick = () => { following = !following; $("follow").classList.toggle("on", following); status(following ? "Following the child's playhead." : "Follow off."); if (following) poll(); };
 $("parent").onchange = $("child").onchange = saveChoice;
+// no background work: Premiere is only asked for something while Follow is on, or when you come back to the panel
 async function poll(){
-  if (following) {
-    const pos = JSON.parse(await jsx("tf_pos()") || "{}");
-    const sig = pos.id + ":" + (pos.t || 0).toFixed(1);
-    if (pos.id === $("child").value && sig !== lastSig) { lastSig = sig; await lookup(); }
-  }
+  if (!following) return;
+  const pos = JSON.parse(await jsx("tf_pos()") || "{}");
+  const sig = pos.id + ":" + (pos.t || 0).toFixed(1);
+  if (pos.id === $("child").value && sig !== lastSig) { lastSig = sig; await lookup(); }
   setTimeout(poll, 700);
 }
-loadSeqs(); setInterval(loadSeqs, 15000); poll();
+loadSeqs(); window.addEventListener("focus", loadSeqs);   // new sequences appear when you click into the panel
 </script>
 </body>
 </html>
