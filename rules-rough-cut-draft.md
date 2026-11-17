@@ -454,24 +454,30 @@ Every shot in a review scrub (full scrub or Best 3) carries a burned-in label on
 - **Code:** `tools/build_scrub.py` `label_png()` draws this design, and the badge is the take's position among the takes kept for that line in the build.
 
 ## Rough cut v1 from review notes (2026-11-17)
-- **Phone B-roll when the AI character talks.** While the AI voice on the phone speaks, show the phone (B cam). Go back to the talent's camera when the talent does something worth seeing, and also use the phone shot to cover a moment where the talent's face or performance doesn't hold.
-- **The call timer must run true.** The phone shows a live call timer. Within one continuous conversation, every phone shot's timer must move forward in step with the edit.
-  - Use the same take's B cam at its synced time. Example: the A cam ends at 261.55 s, so the B cam picks up at its synced 261.55 s.
-  - If that take has no B cam, borrow another take's phone shot with one fixed source offset for the whole scene (source = timeline time + K). The timer then still runs at real speed. Pick a window with nobody walking through the shot.
-  - Never mix B cams from different takes inside one call.
-- **Alternate openings sit in the timeline, not in other sequences.** Put each alternate right after the main version it competes with, with a label naming who asked for it ("ALT HOOK: take 8, client's pick"). Never at the end of the cut, never as a separate sequence.
+- **Cut away to the device or B-roll when an off-screen voice speaks** (a voice on a phone, a speaker, a voice-over) and nothing on the talent's face matters. Stay on the talent when the talent reacts or does something worth seeing. A cutaway also covers a moment where the talent's face or performance doesn't hold.
+- **On-screen clocks, timers and counters must run forward across cuts.** A call timer, a stopwatch, a progress bar, a wall clock: within one continuous moment its number must move forward in step with the edit, and between scenes it must never go backwards.
+  - Use the same take's other angle at its synced time, so the number continues exactly.
+  - If that take has no other angle, borrow another take with one fixed source offset for the whole scene (source = timeline time + K), so the number still runs at real speed.
+  - If no footage has a usable number, push in or reframe until the number is out of frame, or flag it for VFX.
+- **Alternates sit in the timeline, not in other sequences.** Put each alternate (hook, intro, ending) right after the main version it competes with, labelled with who asked for it. Never at the end of the cut, never as a separate sequence.
 - **Legal-risk moments stay in, labelled** ("LEGAL CHECK"). The version without them comes after lock.
-- **Real voice recordings replace temp AI voices** as soon as the client sends them. Only generate words that are missing, with a clone of the same voice, and say which words are generated.
+- **Real recordings replace temp voices** (AI or scratch reads) as soon as the client sends them. Generate only the missing words, with a clone of the same voice, and say which words are generated. Check a cloned voice's output before using it (Melius tags each output "male voice" / "female voice": a clone can come out as the wrong voice).
 - **Rough cut = one take per line.** Variations belong in the scrub. The scrubs stay as backups after v1, because rounds of "put this back in" always follow.
-- **Reveal lines across a whip:** when an off-screen line has to land between two whips (a short reveal line), slow both whips into one speed-ramped pan (out at ~60%, in at ~45%) until the line fits between the last word before it and the first word after it, with no overlap. Lay the line on its own tracks.
-- **One take for a closing monologue** when a take exists that runs the whole script; never stitch takes with mismatched hands or pose.
+- **A line spoken over a transition** (an off-screen line between two whips or wipes): slow the transition with a speed ramp until the line fits between the last word before it and the first word after it, with no overlap. Lay the line on its own track.
+- **One take for a monologue** when one take runs the whole script; never stitch takes with mismatched hands or pose.
 - **Whip transitions cut whip-to-whip.** Measure each whip's direction (frame-to-frame phase correlation), pick an incoming whip going the same way, and cut mid-blur on both sides.
 - **Before every round, back up the editor's current sequence**, diff it against the last version, and build on the editor's cuts. Never rebuild over them.
 
-## Grade and phone-shot fixes before a 1080p export (2026-11-18)
-- **A white studio must read white.** Measure exported frames, don't eyeball: whites (99th percentile luma) around 225 to 235, blacks (1st percentile) around 25 to 35, zero clipped pixels. A grade that leaves the wall at about 210 and blacks above 35 looks dull.
-- **Grade from the DP's camera color, no LUT.** Use the color science the camera was shot in (for example a Blackmagic Gen 5 / Extended Video setting) as the base and do the rest in Lumetri Basic. Starting point for that base: Exposure +0.6, Contrast 95, Highlights -12, Shadows -50, Whites +60, Blacks -100, Saturation 132, Vibrance 28, Temperature +4, Sharpen 12.
+## Grade and export prep (2026-11-18)
+- **Grade on the originals, never only on proxies.** Proxies made in another app (Resolve, Media Encoder) can carry a different gamma or color than the camera originals. Toggle proxies off and measure before calling a grade done.
+- **The timeline must point at the originals before export.** If clips were cut on proxy files directly, attach each original to its proxy item (`ProjectItem.attachProxy(original, 1)`) so the edit stays and the export uses full resolution. Check every clip with proxies off.
+- **A white studio must read white.** Measure exported frames, don't eyeball: whites (99th percentile luma) around 225 to 235, blacks (1st percentile) around 25 to 35, zero clipped pixels.
+- **Grade from the camera's own color science, no LUT,** as set by the DP, then fine-tune in Lumetri Basic. Numbers depend on the camera and its settings: measure, don't copy them between projects.
 - **Every camera body gets its own grade,** matched to the main camera's white and black levels and neutral grey. A second body often carries a magenta or green cast; fix it with Tint first.
-- **A phone timer that runs backwards between scenes:** when no footage has the right number, push in on that phone shot until the timer line sits just out of frame (keep the call buttons). Grade and judge it on the 4K originals, not the proxy.
-- **Slowed whips reveal the studio.** Add Directional Blur (horizontal, about 60) to the whip frames so the pan reads as a smear.
-- **People walking through a B-roll window:** check the window at 1 frame per second before using it, not every 2 seconds.
+- **Slowed whips reveal the set.** Add Directional Blur (horizontal) to the whip frames so the pan reads as a smear.
+- **Check B-roll windows at 1 frame per second** for people walking through before using them, not every 2 seconds.
+
+## How to write these rules (hard rule)
+- Every rule must make sense on any project. Write the general principle; a project's specifics (a character's name, "the phone", one camera's numbers) can only appear as a labelled example.
+- No client, project or person names: the repo is public.
+- Before every push, reread the new rules and the changelog entry against this section.

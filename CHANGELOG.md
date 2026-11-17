@@ -5,12 +5,17 @@ Every change to the rough-cut agent gets an entry here, newest first, in the sam
 ## 2026-11-18
 
 ### Added
-- Rules for a 1080p-ready rough cut:
-  - measured white-studio grade targets and a Lumetri starting point (DP's camera color, no LUT)
+- Rules for export prep:
+  - grade on the originals, not only on proxies
+  - point the timeline at the originals before export (attach them to the proxy items)
+  - measured white-studio grade targets
   - one grade per camera body
-  - push in to hide a phone timer that runs backwards
   - Directional Blur on slowed whips
   - check B-roll windows at 1 frame per second
+- Hard rule for writing rules: general principles only, project details only as labelled examples, no names.
+
+### Changed
+- The 2026-11-17 rules rewritten to work on any project: cut away when an off-screen voice speaks; on-screen clocks and timers run forward; alternates in-line; real recordings replace temp voices; lines over speed-ramped transitions.
 
 ## 2026-11-17
 
@@ -26,16 +31,16 @@ Every change to the rough-cut agent gets an entry here, newest first, in the sam
 
 ### Rules
 - Rules from the editor's rough cut v1 review in `rules-rough-cut-draft.md`:
-  - phone B-roll whenever the AI talks
-  - a call timer that always runs true (synced B cam, or one fixed offset per scene)
-  - alternate openings in-line with a "who asked" label
+  - cut away when an off-screen voice speaks
+  - on-screen clocks and timers run forward across cuts
+  - alternates in-line with a "who asked" label
   - legal-risk moments labelled
-  - real voice recordings replace temp AI voices
+  - real recordings replace temp voices
   - one take per line in the rough cut, with the scrubs kept as backups
   - whip-to-whip transitions matched by measured direction
   - back up and diff the editor's sequence before every round
-  - reveal lines over speed-ramped whips
-  - one take for a closing monologue
+  - lines over speed-ramped transitions
+  - one take for a monologue
 
 ## 2026-11-16
 
