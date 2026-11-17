@@ -467,3 +467,11 @@ Every shot in a review scrub (full scrub or Best 3) carries a burned-in label on
 - **One take for a closing monologue** when a take exists that runs the whole script; never stitch takes with mismatched hands or pose.
 - **Whip transitions cut whip-to-whip.** Measure each whip's direction (frame-to-frame phase correlation), pick an incoming whip going the same way, and cut mid-blur on both sides.
 - **Before every round, back up the editor's current sequence**, diff it against the last version, and build on the editor's cuts. Never rebuild over them.
+
+## Grade and phone-shot fixes before a 1080p export (2026-11-18)
+- **A white studio must read white.** Measure exported frames, don't eyeball: whites (99th percentile luma) around 225 to 235, blacks (1st percentile) around 25 to 35, zero clipped pixels. A grade that leaves the wall at about 210 and blacks above 35 looks dull.
+- **Grade from the DP's camera color, no LUT.** Use the color science the camera was shot in (for example a Blackmagic Gen 5 / Extended Video setting) as the base and do the rest in Lumetri Basic. Starting point for that base: Exposure +0.6, Contrast 95, Highlights -12, Shadows -50, Whites +60, Blacks -100, Saturation 132, Vibrance 28, Temperature +4, Sharpen 12.
+- **Every camera body gets its own grade,** matched to the main camera's white and black levels and neutral grey. A second body often carries a magenta or green cast; fix it with Tint first.
+- **A phone timer that runs backwards between scenes:** when no footage has the right number, push in on that phone shot until the timer line sits just out of frame (keep the call buttons). Grade and judge it on the 4K originals, not the proxy.
+- **Slowed whips reveal the studio.** Add Directional Blur (horizontal, about 60) to the whip frames so the pan reads as a smear.
+- **People walking through a B-roll window:** check the window at 1 frame per second before using it, not every 2 seconds.

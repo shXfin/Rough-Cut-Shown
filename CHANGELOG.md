@@ -2,6 +2,16 @@
 
 Every change to the rough-cut agent gets an entry here, newest first, in the same commit as the change.
 
+## 2026-11-18
+
+### Added
+- Rules for a 1080p-ready rough cut:
+  - measured white-studio grade targets and a Lumetri starting point (DP's camera color, no LUT)
+  - one grade per camera body
+  - push in to hide a phone timer that runs backwards
+  - Directional Blur on slowed whips
+  - check B-roll windows at 1 frame per second
+
 ## 2026-11-17
 
 ### Added
