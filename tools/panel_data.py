@@ -17,8 +17,45 @@ for sc in SCRUBS:
         for r in json.load(open(rp)): AT.setdefault((r["line"], r["take"], r["src"]), {})[sc["seq"]] = r["at"]
 # sound checks come straight from takes.json, so a newer check shows up without rebuilding the scrub
 TK = {(t["line"], t["take"], t["src"]): t for t in json.load(open(os.path.join(W, "takes.json")))}
-RC = {r["line"]: r for r in json.load(open(os.path.join(W, os.environ.get("RC_REPORT", f"{PJ}_RC_clean.takes.json"))))}
-import re
+import re, glob as _glob
+# recording words per take (the panel finds the take under the playhead by recording time: raw recorder clips all
+# share one file name, so a name can't tell takes apart) + camera file -> (recorder, offset) for camera-audio clips
+_WB = {}
+def _words(src):
+    T = re.search(r"T\d+", src)
+    if not T: return []
+    if T.group() not in _WB:
+        g = _glob.glob(os.path.join(W, "words_best", f"*{T.group()}*")) or _glob.glob(os.path.join(W, "words", f"*{T.group()}*"))
+        _WB[T.group()] = json.load(open(g[0])) if g else []
+    return _WB[T.group()]
+CAMS = {}
+for _n in ("sync_a_ok.jsonl", "sync_b_ok.jsonl"):
+    if os.path.exists(os.path.join(W, _n)):
+        for _l in open(os.path.join(W, _n)):
+            _d = json.loads(_l); _src = next((t["src"] for t in json.load(open(os.path.join(W, "takes.json"))) if re.search(r"T\d+", t["src"]) and re.search(r"T\d+", _d["other"]) and re.search(r"T\d+", t["src"]).group() == re.search(r"T\d+", _d["other"]).group()), os.path.basename(_d["other"]))
+            CAMS.setdefault(os.path.basename(_d["ref"]), [_src, _d["offset_s"]])
+def _rc_from_xml(xml):   # ANY sequence XML (also one exported from a hand edit): where each line first plays, by recording time
+    if not xml or not os.path.exists(xml): return None
+    import xml.etree.ElementTree as ET, urllib.parse
+    seq = ET.parse(xml).getroot().find(".//sequence"); files = {}
+    for f in seq.iter("file"):
+        if f.findtext("pathurl"): files[f.get("id")] = os.path.basename(urllib.parse.unquote(f.findtext("pathurl")))
+    tk = json.load(open(os.path.join(W, "takes.json"))); out = {}
+    for tr in seq.find("media").find("audio").findall("track"):
+        for c in tr.findall("clipitem"):
+            s, e = int(c.findtext("start")), int(c.findtext("end"))
+            if s < 0 or e < 0 or c.find("file") is None: continue
+            nm = files.get(c.find("file").get("id"), ""); i0 = int(c.findtext("in")) / FPS; i1 = int(c.findtext("out")) / FPS
+            src, off = (nm, 0.0) if nm.upper().endswith(".WAV") and "MASSAGE" in nm else (CAMS.get(nm, [None, 0])[0], CAMS.get(nm, [None, 0])[1])
+            if not src: continue
+            r0, r1 = i0 - off, i1 - off
+            for t in tk:
+                if re.search(r"T\d+", t["src"]).group() == re.search(r"T\d+", src).group() and t["start"] < r1 and t.get("end", t["start"]) > r0:
+                    L = t["line"]; at = s / FPS
+                    if L not in out or at < out[L]["at"]: out[L] = dict(line=L, take=t["take"], src=t["src"], at=round(at, 2), dur=round((e - s) / FPS, 2))
+    return out
+FPS = 24000 / 1001
+RC = _rc_from_xml(os.environ.get("RC_XML_LIVE")) or {r["line"]: r for r in json.load(open(os.path.join(W, os.environ.get("RC_REPORT", f"{PJ}_RC_clean.takes.json"))))}
 FPS = 24000 / 1001
 def pieces(xml, report):   # audio piece file name -> (line, take): lets the panel name any clip, wherever you move it
     out = {}
@@ -51,10 +88,11 @@ for L, ln in LINES.items():
                           feed=bool(r.get("feed") or TK.get((L, r["take"], r["src"]), {}).get("part_feed")),
                           part_feed=TK.get((L, r["take"], r["src"]), {}).get("part_feed", ""), wind=(r.get("wind") or -99) > 12, cams=r.get("cams", ""), src=r["src"],
                           picked=bool(p and p["take"] == r["take"] and p["src"] == r["src"]),
+                          w=[[x["w"], round(x["start"], 2), round(x["end"], 2)] for x in _words(r["src"]) if TK.get((L, r["take"], r["src"])) and TK[(L, r["take"], r["src"])]["start"] - 0.05 <= x["start"] <= TK[(L, r["take"], r["src"])]["end"]],
                           thumbs={c: thumb(pth, s, f"{L}_{r['take']}_{c}.jpg") for c, (pth, s) in r.get("frames", {}).items()}))
     if not takes: continue
     p = RC.get(L)
-    lines.append(dict(id=L, num=int(L[1:]), text=ln["text"], who=ln.get("who", "").replace("FOUNDER", "Founder "),
+    lines.append(dict(id=L, num=int(''.join(c for c in L[1:] if c.isdigit()) or 0), text=ln["text"], who=ln.get("who", "").replace("FOUNDER", "Founder "),
                       rc_at=p["at"] if p else None, rc_dur=p["dur"] if p else None, check=(p or {}).get("check") or [],
                       takes=sorted(takes, key=lambda t: not t["picked"])))
 cfg = os.path.expanduser("~/.shown"); os.makedirs(cfg, exist_ok=True)
@@ -65,7 +103,7 @@ except Exception: _old_files = {}
 data = dict(client=CLIENT, rc_seq=os.environ.get("RC_SEQ", f"{CLIENT.upper()} REVIEW 1 - Rough cut (picked takes)"),
             scrub_seq=os.environ.get("SCRUB_SEQ", f"{CLIENT.upper()} REVIEW 2 - Scrub (every take, A and B side by side)"), lines=lines,
             work=W, built=__import__("time").strftime("%H:%M"),
-            scrubs=[sc["seq"] for sc in SCRUBS],
+            scrubs=[sc["seq"] for sc in SCRUBS], cams=CAMS,
             files={**_old_files, **{k: v for sc in SCRUBS[1:] for k, v in pieces(os.path.join(W, sc["xml"]), json.load(open(os.path.join(W, sc["report"])))).items()}, **pieces(os.path.join(W, os.environ.get("SCRUB_XML", f"{PJ}_SCRUB_grid.xml")), SCRUB),
                    **pieces(os.path.join(W, os.environ.get("RC_XML", f"{PJ}_RC_clean.xml")), list(RC.values()))})
 # one data file PER PROJECT (the panel opens the one matching the open Premiere project's name); takefinder.json

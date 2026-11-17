@@ -12,3 +12,6 @@ reference/
 *.docx
 .DS_Store
 __pycache__/
+
+# CEP panel manifests are code, not client timelines
+!**/CSXS/manifest.xml

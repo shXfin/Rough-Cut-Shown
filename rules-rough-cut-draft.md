@@ -1,9 +1,9 @@
-# Rough cut rules: draft from the Wajo test
+# Rough cut rules
 
-Editor notes from cutting the Wajo shoot (Shivani, Fo launch, Sept 2026) with the local pipeline.
-Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. Each rule says what went wrong and what to do instead.
+Editor notes for an agent that builds video rough cuts (Premiere, camera proxies, recorder audio, AI voices) with the local pipeline.
+Each rule says what went wrong and what to do instead.
 
-## Shown's standard (measured from editors' rough cuts: Rayline RC 1.3, Notch RC V2)
+## House standard (measured from editors' rough cuts)
 
 - **Tight inside a section:** 0.2 to 0.5 s between sentences.
 - **One breath at a section change:** about 1 s, left on purpose, with a "trim point" marker where a tight cut would go.
@@ -13,31 +13,31 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 
 ## Script
 
-- **Use the shooting script, not the latest draft.** Wajo's script doc held five versions. The footage matched the first one (the "lunch date" version), not the Mike and Sarah draft at the bottom. Before matching, check that the script's lines actually appear in the transcript; if under half match, ask for the right version.
-- **Expect on-set rewrites.** "I finished getting ready" became "I just got back from lunch". Treat a rewrite as a take of the same line and flag it, never as a missing line.
-- **Paraphrase is normal.** The founder said "a decade" for "12 years" and swapped the order of "Meta, Amazon and Google". Score wording loosely; only numbers and claims must match exactly.
+- **Use the shooting script, not the latest draft.** One script doc held five versions. The footage matched the first one, not the newest draft at the bottom. Before matching, check that the script's lines actually appear in the transcript; if under half match, ask for the right version.
+- **Expect on-set rewrites.** A line like "I just finished getting ready" can become "I just got back". Treat a rewrite as a take of the same line and flag it, never as a missing line.
+- **Paraphrase is normal.** The founder said "a decade" for "12 years" and swapped the order of a list of company names. Score wording loosely; only numbers and claims must match exactly.
 - **Numbers need normalizing.** The script writes "twelve thirty", the transcript writes "12 .30". Compare digits to digits.
 
 ## Takes
 
-- **Use the slate to know the setup.** "This is hook two, take one" tells you which section a take belongs to. Hook 1 and Hook 2 share lines ("you're a lifesaver"), and without the slate the takes got swapped between them.
+- **Use the slate to know the setup.** "This is hook two, take one" tells you which section a take belongs to. Hook 1 and Hook 2 can share lines ("you're a lifesaver"), and without the slate the takes got swapped between them.
 - **Ignore everything before the first slate.** Sound checks and crew chatter ("I've got the boom on channel one") matched short script lines like "I've got it".
 - **Short lines need a stricter match.** Lines of four words or fewer ("You did what?", "I know") match random chatter easily.
-- **Lines read off-mic are placeholders.** Fo's lines were read on set by a crew member. The real voice files live in `Assets/FO VOICE LINES` on Aspect; use those for the AI character's lines.
+- **Lines read off-mic are placeholders.** The AI character's lines were read on set by a crew member. The real voice files live in a voice-lines folder on Aspect (e.g. `Assets/<CHARACTER> VOICE LINES`); use those for the AI character's lines.
 
 ## Sync
 
-- **Check which cameras have sound.** Wajo's A cam proxies were silent. Never assume two cameras started together because their clip lengths match: that put every A cam shot out of sync.
+- **Check which cameras have sound.** On one shoot the A cam proxies were silent. Never assume two cameras started together because their clip lengths match: that put every A cam shot out of sync.
 - **Match words, not waveforms.** Camera scratch audio and the recorder correlated too weakly for waveform sync (no file locked). Matching the same spoken words on both devices locked every B cam, C cam and recorder file.
-- **Camera timecode isn't shared unless someone jammed it.** A and B cam timecode didn't line up on Wajo. Ask on set, or sync silent cameras by eye at a clap.
+- **Camera timecode isn't shared unless someone jammed it.** On one shoot A and B cam timecode didn't line up. Ask on set, or sync silent cameras by eye at a clap.
 - **Proxies drop timecode.** The originals keep it in a small XML file next to each clip (Sony `M01.XML`). Read that, never the big video file.
 
 ## Cameras
 
-- **Camera letters don't mean the same thing every shoot.** The fixed rule "A for hooks, C for demos" picked a blurry handheld C cam shot. On Wajo: A = locked-off shot of the founder, B = locked close-up of the green-screen phone (the AI character's "face"), C = roaming BTS handheld. Tag each camera's role once per shoot and choose by role.
+- **Camera letters don't mean the same thing every shoot.** The fixed rule "A for hooks, C for demos" picked a blurry handheld C cam shot. On one shoot: A = locked-off shot of the founder, B = locked close-up of the green-screen phone (the AI character's "face"), C = roaming BTS handheld. Tag each camera's role once per shoot and choose by role.
 - **Show whoever is talking.** The founder's lines go on the founder's camera; the AI character's lines go on its phone shot. Leaving the founder's camera out put the phone on screen for her lines.
 - **Look before you pick.** Check one frame of the chosen angle: soft focus, blinking mid-word, or the subject out of frame means take the next angle. On a locked-off shot, compare against an empty-set frame: if the chair is empty, use the camera that follows her.
-- **Don't hold one static shot for minutes.** The AI character talks for about two minutes; alternate its close-up with the wide of the set.
+- **Don't hold one static shot for minutes.** When the AI character talks for about two minutes, alternate its close-up with the wide of the set.
 
 ## Picking takes
 
@@ -52,14 +52,14 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - **Use the right mic for the speaker.** The founder's lav is about 10 dB cleaner than the mix, but it only hears her: off-mic lines came out silent on it. Lav for the person wearing it, the mix for anyone else.
 - **Never cut inside the neighbouring words.** Stop before the word after the line and start after the word before it, or the edges leak ("Guys.", "now now").
 - **Run-on words stay.** If the next word follows with no pause ("for a year now"), carry the line through it instead of shaving the last syllable.
-- **A take never opens mid-sentence.** Grow a match back to the sentence start ("Now with Fo..."), not "...it or email it".
+- **A take never opens mid-sentence.** Grow a match back to the sentence start ("Now with the app..."), not "...it or email it".
 - **Never play the same words twice** where two lines from one take overlap.
 - **Lay continuous reads as one piece of sound.** Back-to-back lines from the same take keep one unbroken audio clip; only the picture cuts.
 
 ## Sound
 
 - **Abrupt usually means the background jumped, not the cut.** The crew's off-mic reads had room noise only ~8 dB under the voice; every switch to the clean lav slammed the hiss in and out.
-- **Use the real voice files for the AI character.** Placeholder reads on set get replaced by the rendered voice (Wajo: `Assets/FO VOICE LINES`, official takes listed in LINES.txt, whole-scene renders for gaps, plus the owner's and plumber's files).
+- **Use the real voice files for the AI character.** Placeholder reads on set get replaced by the rendered voice (e.g. the voice-lines folder on Aspect, official takes listed in LINES.txt, whole-scene renders for gaps, plus the files for any other AI-voiced characters).
 - **Room tone under everything.** Lay the recorded room tone on its own track for the whole cut, so the background never drops to dead silence between clips.
 - **Match the background between words** on every piece (pull it down between words using the word timings), and level every piece to the same voiced loudness.
 - **Soft ceiling, no hard clipping.** Measure clipped samples on every render; the target is zero.
@@ -69,7 +69,7 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 
 - **Multicam from XML loses sync.** Premiere lines every angle up at zero on import. Either fix the offsets by script right after import, or put angles on stacked tracks until that exists.
 - **Keep labels out of the picture.** Use sequence markers or a separate label track the editor can switch off, never burned-in text.
-- **Write labels in plain words** ("Hook · Take 2 of 4 · B cam · needs a look"), not codes like "L10 T2/4 B".
+- **Write labels in plain words** ("HOOK 1, pick 2 of 3, take 14"), not codes like "L10 T2/4 B". No dot separators.
 
 ## When a project is done
 
@@ -82,17 +82,17 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - **Check the proxies first:** that every camera clip has a proxy, that each proxy has sound (Aspect drops it on some clips), and that its length matches the original. Do this before transcribing, syncing or downloading anything big.
 - **One silent clip must never stop the batch:** skip it, list it, and place it by picture later.
 
-## Camera coverage is checked, never assumed (Notch, 2026-11-04)
+## Camera coverage is checked, never assumed (2026-11-04)
 - FIRST, right after sync and before takes, scrub or any edit: run `coverage.py work_dir`. It prints, per recorder
   file, how much of the speech each camera covers, and exits 2 if any camera is under 90% anywhere. On exit 2 the run
   stops and the editor is told which camera, which files, and the likely cause (stopped rolling, missing card, failed
-  sync). Socrates only falls back to another angle silently; we flag instead.
+  sync). Never fall back to another angle silently; flag instead.
 - Every camera must sit on every take where it was rolling. Sync keeps EVERY camera clip that matches a recorder
   file (textsync.py), not only the best one: cameras stop and restart inside one recorder take.
 - Each sync is confirmed word by word (verify_sync.py) before it is used.
 - After every build, the builder prints `WARNING: no B cam on N pieces: L13 ...` and each such take's marker says
   `NO B CAM`. The editor is told in chat, with the line list and the reason (footage stops, or sync failed).
-- If a camera's footage simply ends (Notch B cam stops during MixPre-017), say so and ask whether another card exists.
+- If a camera's footage simply ends (e.g. the B cam stops during one recorder file, MixPre-017), say so and ask whether another card exists.
 
 ## Sound per speaker (audio engineer pass)
 - Natural first: gentle noise reduction (never watery), hum notches, light EQ (less boxy, a touch of presence),
@@ -102,12 +102,12 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - A word longer than 1.5 s is a timing failure: fix_stretched.py re-listens and keeps the most complete read.
 - Check transcription runs without the script as a prompt, and any line it misses is re-checked on its own.
 
-## Notch round 3 fixes (2026-11-04, from Shafin's review)
+## Round 3 fixes (2026-11-04)
 ### Picking: stumbles
 - Whisper writes a stumbled take as clean text. `stumble.py` measures talking that no word covers (false start,
   "uh", repeated half-word) and pick.py takes 8 points per second of it.
 - Halting delivery counts too: pause time mid-sentence (not after a comma or stop) over 0.3 s costs 10 points per
-  second. Notch L08 take 3 has a 0.7 s pause inside "brand's ... Shopify": the editor's ear decides those.
+  second. Example: L08 take 3 had a 0.7 s pause inside "brand's ... store": the editor's ear decides those.
 ### Swapping a bad pick fast
 - Every line also gets its own short sequence in `Takes by line` (L08 = every take of line 8, back to back,
   labelled). Watch it, then tell the agent "L08 take 5" or swap by hand. The Markers panel search ("L08") also
@@ -128,22 +128,22 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - After cleaning, every rough-cut piece is scanned for silence over 0.5 s inside the line (not the lead-in or tail).
   Each is cut down to a 0.35 s breath, and the cut is hidden like a take change (angle switch, or punch-in).
   The build lists them: "tightened L20: 2 pause(s), 0.39 s of thinking removed". Pauses at sentence ends stay.
-- A dragged word (over 0.65 s, e.g. "brand'sss... Shopify") is a voiced hesitation that silence checks miss: the
+- A dragged word (over 0.65 s, e.g. "brand'sss... store") is a voiced hesitation that silence checks miss: the
   picker penalises it. When the editor flags a pick, check every take of the line verbatim (words/s, longest word,
   longest gap) and swap; record the swap in picks.json as "override" with the reason.
 
-## Line feeds and the script check (Notch, 2026-11-04)
+## Line feeds and the script check (2026-11-04)
 - On set the cameraman often reads the line for the founder to repeat. That read is a "take" to Whisper. stumble.py
   marks any take more than 10 dB under its recorder file's median founder level as `off_mic` (a line feed), pick.py
-  never picks it, and the scrub labels it `LINE FEED (cameraman reading it, off-mic)`. Notch had 46.
-- Never override a pick without checking its voice level: my L08 swap to take 2 put the cameraman's read in the cut.
+  never picks it, and the scrub labels it `LINE FEED (cameraman reading it, off-mic)`. One shoot had 46.
+- Never override a pick without checking its voice level: one L08 swap to take 2 put the cameraman's read in the cut.
 - After EVERY rebuild run `script_check.py work_dir rc.xml`: each rough-cut line, exactly as the timeline plays it,
   is transcribed on its own and compared with the script. Any line under 90% is listed with script vs heard. Spelling
   differences (15/fifteen, brand names) are fine; missing or changed words are not.
 - Exact script wording beats a smoother reworded read (the drag penalty is capped so it never outweighs this).
 
-## Editor workflow: rough cut <-> scrub (Notch, 2026-11-04)
-- Every rough-cut marker shows the REAL take number ("L08 · Take 3 of 8"), the same number the scrub uses.
+## Editor workflow: rough cut <-> scrub (2026-11-04)
+- Every rough-cut marker shows the REAL take number ("Line 8, take 3 of 8"), the same number the scrub uses.
 - Every marker comment says where the piece came from and where its alternatives are:
   `Recorder MixPre-013 @ 01:36.2 | A cam 7T0A9130 @ 01:38.7 | B cam A_0001C011 @ 01:37.9 | in scrub @ 00:12:34:05`.
   The recorder WAV, the A cam file and the B cam file are three recordings of the same moment; the times say where
@@ -156,7 +156,7 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   and they get added to the list.
 
 ## Premiere safety
-- Sequences go into Premiere ONLY through `ppro_swap.py "Notch/Sequences" "name" file.xml`: import first, confirm the
+- Sequences go into Premiere ONLY through `ppro_swap.py "<Client>/Sequences" "name" file.xml`: import first, confirm the
   new sequence exists and has clips, then replace the old one in that exact bin path. A failed import keeps the old.
   (A batch import once silently skipped the scrub after the old one was already deleted.)
 - Wind is measured on the worst half second of each take, not the average: one gust over "To prove it" ruins a line.
@@ -171,14 +171,14 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   line with all its takes.
 
 ## Take Finder panel (inside Premiere) and multicam review (2026-11-04)
-- Editors work in Premiere, not a browser. `panel-takefinder/` is our own CEP panel (separate from Sam's Claude
-  Bridge, which stays untouched). Install: copy it to ~/Library/Application Support/Adobe/CEP/extensions/
+- Editors work in Premiere, not a browser. `panel-takefinder/` is our own CEP panel (separate from the Claude Adobe
+  bridge, which stays untouched). Install: copy it to ~/Library/Application Support/Adobe/CEP/extensions/
   com.shownmedia.takefinder, restart Premiere, Window > Extensions > Take Finder.
 - After every build run `panel_data.py work_dir Client`: writes ~/.shown/takefinder.json + thumbnails.
 - Click any clip in the rough cut or scrub: the panel shows that line and every take (A/B frames, "In your rough
   cut", "Cameraman reading it (skip)", "Windy", "No B camera"). "Show in scrub" jumps there; "Back to rough cut" returns.
 - Labels are plain words: "Line 10, take 4 of 6, Founder 1, Demo 1". Never codes like L10, never dot separators.
-- The scrub IS the multicam (Shafin: one scrub, eagle eye on everything). Premiere can't export the multicam monitor
+- The scrub IS the multicam (the editor: one scrub, eagle eye on everything). Premiere can't export the multicam monitor
   and Frame.io can't switch angles, so the scrub is built
   `REVIEW 3 - Scrub multicam` with every camera on (GRID=1); `ppro_grid.py` tiles A left, B right, one sound track.
   No paid grid plugin needed.
@@ -194,9 +194,9 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   line shows its takes and jumps to it in the rough cut.
 - Markers are not burned into an exported video. For a Frame.io review, burn the line/take text in.
 
-## Part feeds, flags and swaps from the panel (Notch, 2026-11-05)
-- The cameraman can read only HALF a line inside a take the founder starts (Notch L07 take 2: founder says "Six weeks
-  ago, we connected Notch to Scentless", cameraman says "A brand that was performing quite poorly"). The whole-take
+## Part feeds, flags and swaps from the panel (2026-11-05)
+- The cameraman can read only HALF a line inside a take the founder starts (e.g. L07 take 2: the founder says "Six weeks
+  ago, we connected our product to a client's store", the cameraman says "A brand that was performing quite poorly"). The whole-take
   level check missed it. stumble.py now checks word by word: 3+ words in a row 15 dB under the take's own loud words
   = `part_feed`. pick.py never picks it; the panel shows "Cameraman reads part of it: ..." in red.
 - Whisper with the script as a prompt writes the script, not what was said. Any doubt about a word: re-listen
@@ -215,7 +215,7 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   - A rebuild redoes the whole rough cut sequence: hand trims and extra edits in it don't carry over (they stay in
     the backup). Make take choices first, fine edits after.
 
-## Muffled lav and "under water" sound (Notch, 2026-11-05)
+## Muffled lav and "under water" sound (2026-11-05)
 - Founder 2's lav was buried under his jacket: 8-12 dB less 2-10 kHz than Founder 1 from Line 13 on (the editor's
   cut has the same dullness). Our afftdn noise reduction then ate another 8-10 dB of the quiet air on top: under water.
 - Fix: no broadband noise reduction (outdoor lavs sit ~35 dB over the noise; the room tone bed covers it), plus
@@ -224,7 +224,7 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   hiss in pauses stays ~40 dB under the voice. Measure, never assume: compare each piece to its raw channel.
 - Don't use the median of ALL pieces as the target: the speaker with most lines (the muffled one) drags it down.
 
-## Hand edits, clean starts, labels (Notch, 2026-11-05)
+## Hand edits, clean starts, labels (2026-11-05)
 - A rebuild while the editor works lost his trims and swaps (they survived only in Sequences/Old). Now:
   hand_edits.py reads the live sequence before every rebuild and keeps take swaps, trims (exact recording in/out)
   and deleted lines in overrides.json; anything else (extra clips, effects, keyframes) is listed as not carried.
@@ -235,10 +235,10 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   mutes any noise in the lead-in or tail, and opens BREATH (0.25 s) of quiet before the first word.
 - Sound, round 2: full match EQ (up to 13 dB) plus a light harmonic exciter above 3.5 kHz on pieces more than 8 dB
   dull: Founder 2 measured -29.3 against Founder 1's -28.3 (EQ alone stopped at -34.6; the editor's cut is -45).
-- Multicam scrub export (Mateus): "CAM A - Take 1" / "CAM B - Take 1" burned in over each half (labels/ PNGs on V3),
+- Multicam scrub export (for a reviewer): "CAM A - Take 1" / "CAM B - Take 1" burned in over each half (labels/ PNGs on V3),
   take numbers restart every line, no black between takes, 1 s between lines.
 
-## In-place fixes on an edited cut (Notch, 2026-11-05)
+## In-place fixes on an edited cut (2026-11-05)
 - Never rebuild a cut the editor has worked on to fix sound or sync. Fix in place:
   check_sync.py (every camera clip vs the sound under it; --fix slides only the source frames, positions untouched),
   REBAKE=all + ppro_relink.py (sound re-made at exactly the same length, clips pointed at it: every edit stays),
@@ -249,22 +249,22 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   piece's calmest moments.
 - No grading until the cut is final and the 4K is conformed.
 - Test every Premiere script change on a CLONE first, and find the clone by name, never by its index in the list
-  (an index guess renamed a Wajo sequence; restored from the saved project).
+  (an index guess renamed another project's sequence; restored from the saved project).
 - Buried lav (Founder 2): blend.py, lav below 1.5 kHz + the A camera ORIGINAL's mic above it, aligned to the sample
   by cross-correlation (0.92-0.97), level-matched on the voice body (400-1400 Hz). REBAKE with BLEND=1 applies it to
   pieces more than 6 dB dull. Natural top end instead of boosted, "under water" EQ.
 - A "spike" can be the founder's own voice (a 90 ms squeak on "fatigue", L17, in the original recording): check the
   raw before processing it; the fix is another take, not a filter.
 
-## Handles on every sound piece (Notch, 2026-11-05)
-- Shafin: "if I see anything cut off, I should be able to drag the audio". Every piece file now carries FILE_HANDLE
+## Handles on every sound piece (2026-11-05)
+- The editor: "if I see anything cut off, I should be able to drag the audio". Every piece file now carries FILE_HANDLE
   (2 s) of real sound before and after the edit; the clip plays only the edit (in point = the handle). Loudness is
   measured on the edit only; click/noise mutes apply only inside the edit, the handles stay open.
 - Existing cuts get handles in place: REBAKE (same s0/s1, handles added) + ppro_relink_handles.py, which swaps the
   file and slides every clip using it, in every sequence, by the handle, keyframes included. Tested on a copy first,
-  project file backed up first (Notch/backups). Manifests record "pre" (handle before the edit); every tool subtracts it.
+  project file backed up first (<Client>/backups). Manifests record "pre" (handle before the edit); every tool subtracts it.
 
-## 4K conform for grading (Notch, 2026-11-05)
+## 4K conform for grading (2026-11-05)
 - conform_4k.py builds "<cut> 4K (for grading)" FROM the editor's live proxy cut: XML export, proxies -> camera
   originals, import beside it, then each camera clip copies its Motion from the proxy cut at 1/4 scale (540 -> 2160).
   The proxy cut is never touched. Check frames side by side (A cam, B cam, a punch-in) before handing it over.
@@ -272,11 +272,11 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
 - Grade only on the 4K copy, after the cut is final.
 - Never link Premiere to originals on a cloud mount (Aspect's "Home Project" streams through 127.0.0.1): Premiere
   reads them in the background (audio conform, thumbnails) even with proxies on, and a 16 GB Mac swaps until every
-  sequence stutters. Copy only the used ranges + handles to a local drive first (Notch: 24 GB instead of 167 GB).
+  sequence stutters. Copy only the used ranges + handles to a local drive first (one project: 24 GB instead of 167 GB).
 
-## Eyeline: founders looking off camera (Notch, 2026-11-05, from Shafin)
-- In most takes of the opening (Lines 1 and 2) the founders glance away from the lens. The editor's cut (Notch Rough
-  Cut V2) used the one continuous take where both hold the lens (MixPre-012 at 18.2 s, A cam 7T0A9128 at 16.5 s,
+## Eyeline: talent looking off camera (2026-11-05)
+- In most takes of one opening (Lines 1 and 2) the founders glanced away from the lens. The editor's reference cut
+  used the one continuous take where both hold the lens (MixPre-012 at 18.2 s, A cam 7T0A9128 at 16.5 s,
   Lines 1-3 with no performance cut). Sound alone can't see this: it picked a take where they look elsewhere.
 - Until vision is in: when an editor's reference cut exists, match its takes by sound (cross-correlate its audio with
   every recording: 0.50+ is a hit, others sit near 0.1) and offer those takes first.
@@ -284,16 +284,16 @@ Written to drop into ShownRoom's (formerly Motion Studio) `rules/rough-cut.md`. 
   hand/face moments, and make it part of pick.py's ranking. A continuous take where both founders hold the lens beats
   stitched "best" lines.
 
-## Vision: eyeline on every take, and Sam's 3-take scrub (Notch, 2026-11-05)
+## Vision: eyeline on every take, and the 3-take (Best 3) scrub (2026-11-05)
 - eyeline.py (MediaPipe Face Landmarker, local, 478 points with irises): samples the A cam at 4 fps while the line is
   spoken, zooms into the head area (medium shots are too small for the model at proxy size: 0 faces found until then),
   keeps the N largest faces (PEOPLE=2), measures head turn + iris direction, and scores the share of the line where
   EVERY founder looks at the lens. Calibrate per project on a take confirmed good (--calibrate SRC:START:END).
 - Checked by eye: 0% takes really look away (head down, eyes off to the side); 80-100% takes hold the lens.
 - top3.py: the best 3 takes per line on sound rank + eyeline (weight 45); eyeline under 70% only fills a line with
-  nothing better, and is flagged LOOKING AWAY. KEEP=top3.json builds the scrub from just those (Sam: 3, not 16-19).
+  nothing better, and is flagged LOOKING AWAY. KEEP=top3.json builds the scrub from just those (reviewers want 3, not 16-19).
 - Next: Gemini (via Melius) for what landmarks can't judge: expression, energy, a smile on the wrong word.
-- Eyeline is judged on the MAIN camera(s) only (Notch: A cam, the close shot; the wide B cam faces are too small).
+- Eyeline is judged on the MAIN camera(s) only (e.g. A cam, the close shot; the wide B cam faces are too small).
   Per project: list which cameras count (EYE_CAMS, default the top/main one); with several close cameras, score each
   and a take passes if the camera you'd cut to has everyone on lens.
 
@@ -308,7 +308,7 @@ Audio
   cross-correlate against the export. Calibrate on a lav-only section first (export adds ~20 ms). Slip > 40 ms = fix.
 Picture
 - Proxies tagged full-range (yuvj, "pc") look flatter and cooler than the 4K in Premiere with the same grade.
-  Measure both renders on the same frame and offset the proxy grade (Notch: Sat +30, Temp +4, Blacks -6).
+  Measure both renders on the same frame and offset the proxy grade (e.g. Sat +30, Temp +4, Blacks -6).
 - B cam (log) gets its own grade matched to A on shared content (grass, sky), not a copy of A.
 Scrub
 - A scrub clip starts 1-7 s BEFORE the spoken line. Check for slate/crew from the clip's in-point, not the line start.
@@ -323,10 +323,10 @@ Vision
   It counts the files each step writes (audio pulled, transcripts, sync, takes, scrub, proxies), refreshes every 5 s,
   and closing it stops nothing. Start it at the beginning of every run so the editor never has to ask for status.
 
-## Lessons from Concurrence ingest (2026-11-07)
+## Ingest: camera RAW, proxies and drive speed (2026-11-07)
 - **Canon RAW (.CRM, 7K):** proxies are slow (Media Encoder's RAW decoder, ~1.5-1.9 GB/min, ~5 h for 550 GB), so
-  NEVER wait on them. The audio is readable straight from the CRM with ffmpeg in seconds per file; Concurrence's
-  A cam carries 4 mono tracks and only tracks 3 and 4 have sound (`-filter_complex [0:a:2][0:a:3]amerge`).
+  NEVER wait on them. The audio is readable straight from the CRM with ffmpeg in seconds per file; one shoot's
+  A cam carried 4 mono tracks and only tracks 3 and 4 had sound (`-filter_complex [0:a:2][0:a:3]amerge`).
   Pull audio while the encoder is PAUSED: two readers on one USB drive drop both to ~33 MB/s.
 - Proxies carry the camera audio too, so a clip whose proxy is done needs no separate audio pull.
 - Build the scrub on the camera originals; attach proxies afterwards (`attachProxy`), they play once encoded.
@@ -335,15 +335,15 @@ Vision
   TAKE, not per recorder file.
 - Shooting script check worked again: the Drive doc held 6 versions; the recorder matched "Teleprompter v2".
 - **Drive link speed first.** Before any proxy job, check `system_profiler SPUSBHostDataType` for the media drive.
-  Concurrence's SanDisk sat at 480 Mb/s (USB 2) on a MacBook charging cable: 35 MB/s, so every proxy app crawled.
+  One shoot's SanDisk drive sat at 480 Mb/s (USB 2) on a MacBook charging cable: 35 MB/s, so every proxy app crawled.
   On a 10 Gb/s cable: ~900 MB/s, Resolve rendered 7K Canon RAW at ~23 fps (19 clips, 234 GB, ~30 min).
 - **Resolve proxies for Premiere:** timeline resolution must match the camera shape (1280x676 for 17:9), else the
   proxy gets black bars inside. Render Individual clips, ProRes 422 Proxy, Source name, 4 audio channels, no
   directory levels. Premiere accepts them with attachProxy; export still uses the RAW.
 
 ## When to cut to cam B (2026-11-09, measured + researched)
-- Measured: Concurrence's editor rough cut (RoughCut_v1, 3:54) uses cam B ZERO times; every shot is A (the hook's
-  "twin on the glass" is A cam plus VFX). Notch's launched cut: 2 B shots in the whole video. So: A is the default,
+- Measured: one editor rough cut (3:54) uses cam B ZERO times; every shot is A (the hook's VFX shot is A cam plus
+  VFX). Another launched cut: 2 B shots in the whole video. So: A is the default,
   B is the exception, never a rhythm ("switch every line" was already flagged as abrupt).
 - Use B only for a reason, and name the reason in the marker:
   1. Hide a cut INSIDE one line or a take change mid-sentence, where A would jump-cut (same framing both sides).
@@ -353,50 +353,50 @@ Vision
 - Cut to B on a pause or breath, never mid-word; hold B at least ~2-3 s; come back to A at the next sentence.
 - Never cut A -> B -> A on near-identical framings (it reads as a jump). B must differ by angle (~30 deg) or size.
 - Rough cut default: A only, plus B where rules 1 and 4 force it. Leave rules 2 and 3 to the editor's taste.
-- **Weak text-sync pairings are wrong pairings (Concurrence 0:48).** textsync keeps any camera clip that shares a few
+- **Weak text-sync pairings are wrong pairings.** textsync keeps any camera clip that shares a few
   4-word phrases with a recorder file. With one founder repeating lines ("let me show you how it works" x21), short
   phrases recur across takes and a clip got paired with the WRONG take (6-7 matches), so the picture showed another
-  take. Rule: a pairing needs >= 30 matches, or its camera audio must correlate with the recorder (> 0.55) over the
+  take (at 0:48 in one cut). Rule: a pairing needs >= 30 matches, or its camera audio must correlate with the recorder (> 0.55) over the
   clip. Drop the rest BEFORE building. Then check every rough-cut line: camera audio vs recorder at the take, lag
-  within 40 ms and correlation > 0.6, else flag. (Concurrence: 14 A and 12 B false pairings removed.)
+  within 40 ms and correlation > 0.6, else flag. (One project: 14 A and 12 B false pairings removed.)
 
 ## Alternative demos / versions (2026-11-10)
-- Scripts often hold SEVERAL versions of a section (Concurrence's doc: metformin call, hair-loss call, Sarah call,
-  "without Concurrence" receptionist call). Before building, search the transcripts for each version's key words
+- Scripts often hold SEVERAL versions of a section (e.g. one script doc held four different demo calls, including
+  a "without the product" receptionist call). Before building, search the transcripts for each version's key words
   and list which were actually SHOT. Unshot versions are ignored, not reported as missing lines.
 - "Aha 1/2/3" inside one version are PARTS of one demo (played in order), not alternatives. Alternatives are whole
   versions of the same section with different wording/props.
 - When 2+ versions of a section were shot: tag every line with its version (lines.json "variant": "Demo A ...").
-  The 3-best scrub keeps EVERY shot version, each as its own labelled block ("DEMO A - metformin", "DEMO B - hair
-  loss") with a marker, so the producer can choose. The rough cut uses ONE version by default (the one in the
+  The 3-best scrub keeps EVERY shot version, each as its own labelled block ("DEMO A - first call", "DEMO B - second
+  call") with a marker, so the producer can choose. The rough cut uses ONE version by default (the one in the
   shooting script, else the one with the most usable takes) and puts a marker at the section start:
   "Other demo versions in the scrub: B, C". Never mix lines from two versions in one rough cut.
-- Concurrence check: only the metformin demo was shot; all 3 aha parts are in both scrubs and the rough cut.
+- Example check: only one demo version was shot; all 3 aha parts are in both scrubs and the rough cut.
 - **Rough cut picks must have the main camera.** A take with sound only (no A cam rolling) goes black in the cut
-  (Concurrence L19 "Of course"). Pick the best take WITH A cam; for an off-camera voice line (agent, crew read)
+  (e.g. L19 "Of course"). Pick the best take WITH A cam; for an off-camera voice line (agent, crew read)
   that means a take where the founder is on camera listening.
 - **Editor's picks as a reference.** When a human rough cut exists (Aspect), find which take it used per line by
   matching its audio against every take (log-envelope correlation > 0.6, then keep only matches that run in script
   order: short lines otherwise match the wrong spot). Mark them in the 3-best scrub as "EDITOR PICK" (and add the
   take if it isn't in our top 3) so the producer can compare. Add section markers (HOOK, AHA 1/2/3, CLOSE) too.
 - **Scene continuity beats take quality.** Lines that belong to one scene (script notes like "OUTFIT SWITCH", "1 month
-  later", a new location) must all come from that scene's setup. Concurrence L35+L36 are the couch follow-up call
+  later", a new location) must all come from that scene's setup. Example: L35+L36 were the couch follow-up call
   (clip C030); L36 had also been read in the office, and picking that read broke the scene (outfit and room jump).
   Detect setups from the camera clips (location/outfit changes) and only pick takes from the line's scene.
 
-## AI voices for scripted AI/agent lines (Concurrence, 2026-11-10)
-- Lines the script gives to an AI agent or app are read by the crew on set as placeholders. In the rough cut, replace every one with an AI voice, generated straight from the SCRIPT text (not the crew's wording: L35 crew said "last week", the script says "last month").
-- Melius: ElevenLabs v3 (`eleven_v3`, text-to-speech), one voice for the whole film. Pick it with `audio_voice_list` (search "assistant calm", "customer service"). Concurrence used "Sofia - Friendly, AI Assistant, American" (x8GG27Jf8JBB9yLaSos4). v3 speaks other languages in the same voice, so a Spanish agent line stays in character. 7 lines cost 54 credits. Files go in `work/ai_voice/`.
+## AI voices for scripted AI/agent lines (2026-11-10)
+- Lines the script gives to an AI agent or app are read by the crew on set as placeholders. In the rough cut, replace every one with an AI voice, generated straight from the SCRIPT text (not the crew's wording: on L35 the crew said "last week", the script says "last month").
+- Melius: ElevenLabs v3 (`eleven_v3`, text-to-speech), one voice for the whole film. Pick it with `audio_voice_list` (search "assistant calm", "customer service"). One project used "Sofia - Friendly, AI Assistant, American" (x8GG27Jf8JBB9yLaSos4). v3 speaks other languages in the same voice, so a Spanish agent line stays in character. 7 lines cost 54 credits. Files go in `work/ai_voice/`.
 - Placement: remove the crew-read sound clip and put the AI line in at the slot's start + 0.2 s. If the AI line runs longer than the slot, slide it earlier first, never over the next line's first word.
 - An agent line that was never shot gets its own slot: open a gap, hold the previous shot of the talent listening over it, and add a marker.
-- Crew reads hidden INSIDE a talent take. Whisper often misses a non-English or far-off crew read (Concurrence L15: 3.4 s of the cameraman reading the Spanish line, picked up quietly on Ali's lav, transcribed as one stretched "okay"). Check the talent's lav level in 0.1 s steps around every reply to an agent line. A long quiet stretch at -45 to -50 dB between the talent's words is the crew reading. Trim the take to the talent's first word. To the reviewer this looks like "audio out of sync", because the voice plays while his lips don't move.
+- Crew reads hidden INSIDE a talent take. Whisper often misses a non-English or far-off crew read (e.g. L15: 3.4 s of the cameraman reading the Spanish line, picked up quietly on the talent's lav, transcribed as one stretched "okay"). Check the talent's lav level in 0.1 s steps around every reply to an agent line. A long quiet stretch at -45 to -50 dB between the talent's words is the crew reading. Trim the take to the talent's first word. To the reviewer this looks like "audio out of sync", because the voice plays while the talent's lips don't move.
 
-## Lav goes dull when the talent moves (Concurrence, 2026-11-10)
+## Lav goes dull when the talent moves (2026-11-10)
 - Symptom: inside one line the voice suddenly sounds muffled or "pitched down" for a second or two, then clear again. Measured on L24: the lav's 3-8 kHz band fell 10-15 dB under the voice body, while the A cam mic stayed bright at the same moments. That is the lav under a sweater when he turns or leans, not the chain.
 - A fixed EQ can't follow it. `polish.unmuffle` runs in every bake: per frame, it lifts the 2-14 kHz bands back toward the piece's own clear vowels (85th percentile of its louder frames), only while he talks, smoothed over 0.25 s and capped at 10 dB. Rebake with `REBAKE=<pieces> BLEND=1 BAKE=1` (the blend adds the A cam mic on very dull pieces), then run `ppro_relink.py`.
 - Check that it worked: compare the HF/body ratio of baked vs raw in 0.5 s windows. Dull windows should come up about 4-8 dB, and clear windows stay put.
 
-## Cam A only means A on top, B kept under it (Concurrence, 2026-11-10)
+## Cam A only means A on top, B kept under it (2026-11-10)
 - The builder puts A on V2 and B on V1, and DISABLES the A clip wherever it chose B. So "remove cam B" left 14 disabled A clips: dark on the timeline and black on playback. When the editor wants A only: enable every A clip, and KEEP B on V1 underneath as the alternate angle. Never delete B.
 - Put B back without its sound: `createSubClip(name, inTicks, outTicks, 0, 1, 0)` (video only), then `overwriteClip` on V1. A plain overwrite of the B file would also drop its camera audio over A1.
 
@@ -405,30 +405,65 @@ Vision
 - Setting `trackItem.start` does not trim the head. It shortens the tail and keeps the inPoint. To trim a head, also set `trackItem.inPoint` to old in + trim, and check that out - in equals end - start.
 - Marker `start`/`end` take numbers (seconds), not Time objects.
 - `ok` is a reserved name inside Premiere's ExtendScript eval. Don't use it as a variable.
-- ffmpeg is not on the default PATH here. Use `/Volumes/T7/work/irl-retrenchment/_tools` (final_build.sh exports it).
+- ffmpeg is not on the default PATH here. Use the local `_tools` folder that holds it (final_build.sh exports it).
 
-## Review round 4 lessons (Concurrence, 2026-11-10)
+## Review round 4 lessons (2026-11-10)
 - AI voices: Premiere reads ElevenLabs mp3s a little short (L30 "every day" lost its last syllable). Always convert to 48 kHz WAV with 0.25 s of silence padded at the end, import the WAV, and place the FULL file so the editor can drag it longer. Put the AI voices on their own track (A2 here), so a line can overlap the air before the next take instead of being cut by it. Give the AI items their own label colour (Rose, index 6) so they stand out on the timeline.
-- AI voice coming from a phone: make a `phone.wav` next to each clean file (`clean.wav` is kept): highpass 320 Hz and lowpass 5.2 kHz (24 dB/oct), +4 dB at 1.8 kHz, -2 dB at 700 Hz, compression 4:1, soft clip at 0.85, a 9/17 ms echo for the small box, loudness -20 LUFS. The ffmpeg chain is in this file's history (round 4) and in `work/ai_voice` of Concurrence.
-- Hesitations Whisper hides: Whisper drops "uh/aa". A long word is the clue: "My... aa blood" came out as "blood" lasting 0.62 s (normal 0.2-0.3). Flag any word over about 0.18 s per syllable, or a first word over 0.45 s, and pick another take. Concurrence L18 take 7 changed to take 3.
+- AI voice coming from a phone: make a `phone.wav` next to each clean file (`clean.wav` is kept): highpass 320 Hz and lowpass 5.2 kHz (24 dB/oct), +4 dB at 1.8 kHz, -2 dB at 700 Hz, compression 4:1, soft clip at 0.85, a 9/17 ms echo for the small box, loudness -20 LUFS. The ffmpeg chain is in this file's history (round 4) and in the project's `work/ai_voice`.
+- Hesitations Whisper hides: Whisper drops "uh/aa". A long word is the clue: "My... aa blood" came out as "blood" lasting 0.62 s (normal 0.2-0.3). Flag any word over about 0.18 s per syllable, or a first word over 0.45 s, and pick another take. Example: L18 take 7 changed to take 3.
 - Lip sync: measure it, don't trust the pairing. `tools/sync_check.py work dump.txt recorder_dir` cross-correlates each picture clip's camera audio with the lav playing under it, on the live edit. Anything over 60 ms gets its picture in/out slid by the lag (L18 0.12 s, L36 0.11 s). Run it after every edit pass and before telling the editor it's clean.
 - "Grain" or crunchy peaks on a quiet lav: after +15 dB of gain the old -3 dBFS limiter (3 ms attack) grabbed every loud syllable, and the top-end lift made the s sounds harsh. The chain now uses compressor 2.5:1 (attack 12 ms, knee 8, the maximum ffmpeg accepts), a limiter at -1 dBFS (attack 6 ms, release 120 ms), and `polish.desibilance`: per 10 ms, the 4.5-12 kHz band of s/t/sh frames is pulled back to 13 dB over the piece's vowel balance. `unmuffle` no longer lifts frames that are already bright. ffmpeg's `deesser` did almost nothing here, so don't rely on it.
 - Room tone track: the bed on A2 (the steadiest 3 s of the room, looped under the whole cut) fills gaps so the background never drops to dead silence at a cut. Say what it is when you add it. If the editor removes it, leave it out.
 - Take Finder: after hand edits or relinks, run `tools/tf_sync.py ~/.shown/takefinder/<project>.json dump.txt work`, so the panel knows every live clip name and line position. Without it, the panel can't follow the playhead and jumps to the wrong spot. The panel (v9) jumps by finding the line's clips on the live sequence. Native `<select>` dropdowns don't work in Premiere's panel, so use plain lists. It also has a search box (words or a line number, arrow keys + Enter).
 - Scripts that fail halfway: the steps before the error HAVE run. Re-read the timeline, then run only the remaining steps (again in round 4: remove + ripple had run before a room-tone line failed).
-- Main sound is ALWAYS the wireless lav recorder (`Audio/0000x_Wireless PRO.WAV`), never cam A or cam B. Canon RAW clips carry 4 audio channels (only ch3/ch4 have sound, the camera's scratch mics), so dragging a camera clip with its audio adds 4 tracks. When the editor stretches a camera shot across lines, the matching lav is found from the A cam sync offset (rec = camera time - offset_s) and the scrub piece that covers it. Concurrence L29-L31: one continuous C015 shot = L31 take 3 (`take_000113_154`), not the take 4 that was in the cut.
+- Main sound is ALWAYS the wireless lav recorder (`Audio/0000x_Wireless PRO.WAV`), never cam A or cam B. Canon RAW clips carry 4 audio channels (only ch3/ch4 have sound, the camera's scratch mics), so dragging a camera clip with its audio adds 4 tracks. When the editor stretches a camera shot across lines, the matching lav is found from the A cam sync offset (rec = camera time - offset_s) and the scrub piece that covers it. Example: L29-L31 ran as one continuous C015 shot = L31 take 3 (`take_000113_154`), not the take 4 that was in the cut.
 - Take Finder v10: a "Follows" switch picks which sequence it follows and jumps to (saved per project). The word under the playhead lights up in the take's quote (`tf_sync.py` stores word timings and each piece's recording offset). The search is a real search bar (magnifier, rounded, `/` to focus).
-- BIG ONE (Concurrence, 2026-11-10): on a clean indoor lav the untouched recording beat every processed version. Shafin: "the raw original is so much better". The default for a clean lav is now: the raw recorder audio with ONE clip-volume number per line, so every line sits at about -23 LUFS with peaks under -1.5 dBFS. No EQ, no unmuffle, no blend, no de-esser, no compressor. Use the chain only on a take that has a real problem (wind, hum, rumble), and A/B it against the raw before keeping it. Listen raw first, always.
+- BIG ONE (2026-11-10): on a clean indoor lav the untouched recording beat every processed version. The editor: "the raw original is so much better". The default for a clean lav is now: the raw recorder audio with ONE clip-volume number per line, so every line sits at about -23 LUFS with peaks under -1.5 dBFS. No EQ, no unmuffle, no blend, no de-esser, no compressor. Use the chain only on a take that has a real problem (wind, hum, rumble), and A/B it against the raw before keeping it. Listen raw first, always.
 - Premiere clip volume from ExtendScript: `components[0].properties[1]` (Volume > Level) takes a linear value: `10^((dB - 15) / 20)` (0 dB = 0.1778, maximum +15 dB). Match clips by their source in-point, not their timeline start, because the editor moves things.
 - Take Finder v13: an × on the blue rebuild bar drops pending swaps, and an empty search box lists every line to browse.
 - Dialogue level, best practice for web/social delivery: the final mix at about -16 LUFS integrated (-14 is the most for YouTube/Instagram), true peak no higher than -1 dBTP, with dialogue peaks usually landing around -6 to -10 dBFS on the meter. Peaks near 0 are too hot. Premiere's Volume runs AFTER the clip's other effects, so the editor's own Enhance/Dynamics make-up gain stacks on top of ours: set clip volume conservatively, then finish with a limiter at -1 dB on the mix bus.
 - Take Finder v14: the header stays fixed and the takes scroll in their own area (a sticky header that grew with the open lists hid the takes). The search list is a dropdown with a Cancel button.
 
-## Audio: measure with an "ear", fix in Premiere, measure again (Concurrence, 2026-11-10)
+## Audio: measure with an "ear", fix in Premiere, measure again (2026-11-10)
 - Don't judge dialogue by eye on waveforms, and don't trust one pass. Loop: export the sequence as WAV from Premiere (`premiere_export` with the "Waveform Audio 48kHz 16-bit" preset; it includes the editor's clip effects), run `tools/audio_ear.py mix.wav dump.txt recorder_dir`, fix, export, run it again.
 - audio_ear reports per line: loudness (LUFS), peak, and DNSMOS (Microsoft's speech quality model, `/Volumes/T7/work/tools/dnsmos/sig_bak_ovr.onnx`, onnxruntime in whisperx-env). SIG is how natural and clean the voice is (1-5), BAK is how clean the background is, and dSIG compares the mix with the untouched recorder at the same moment. A dSIG below -0.2 means the processing made that line WORSE than raw. Flags: LOUD/QUIET (more than 2 dB from the median line), HOT PEAK (over -3 dBFS), PROCESSING HURTS, POOR VOICE (SIG under 3).
 - Order of fixes that worked: (1) raw lav, (2) one clip-volume number per line from the MEASURED mix (target -18 LUFS per line, peak at -3 or below), (3) a Hard Limiter as the LAST effect on every line, because the editor's Essential Sound Dialogue chain (Vocal Enhancer, Dynamics, etc.) runs after clip volume and brings peaks back. Add it through QE: `qe.project.getAudioEffectByName("Hard Limiter")`, then `qeClip.addAudioEffect(fx)`. Its "Maximum Amplitude" is a 0-1 slider: 0.97 measured as a -6 dBFS ceiling. Turn on "Limit True Peak".
-- Result on CON 3: line spread 5.4 dB down to 3.3 dB, the whole mix at -18.2 LUFS with -6 dBFS peaks (dialogue best practice: peaks -6 to -10, deliver about -16 LUFS / -1 dBTP once music is in). Two lines were still flagged PROCESSING HURTS (1:44, 1:50): offer to strip the Dialogue preset from just those lines.
+- Result on one review version: line spread 5.4 dB down to 3.3 dB, the whole mix at -18.2 LUFS with -6 dBFS peaks (dialogue best practice: peaks -6 to -10, deliver about -16 LUFS / -1 dBTP once music is in). Two lines were still flagged PROCESSING HURTS (1:44, 1:50): offer to strip the Dialogue preset from just those lines.
 
-## Changelog is mandatory (2026-11-10, Shafin)
-- Every change to tools, panel or rules gets an entry in CHANGELOG.md (date, project, Added/Changed/Fixed), in the same commit, before pushing.
+## Changelog is mandatory (2026-11-10)
+- Every change to tools, panel or rules gets an entry in CHANGELOG.md (date, Added/Changed/Fixed), in the same commit, before pushing. No client, project or person names: the repo is public.
+
+## Review labels: the approved design (2026-11-16)
+Every shot in a review scrub (full scrub or Best 3) carries a burned-in label on its own top track (PNG stills on V3). The editor can switch the track off for the clean cut.
+- **One label per camera half.** A on the left, B on the right, over the side-by-side multicam. A missing camera gets no box.
+- **Pick badge first.** A big yellow rounded badge (Arial Black 62, black text on #FFD600) with the pick number inside its line: "2/3". A line with one take shows "1/1". This is what lets a reviewer track picks among many clips.
+- **Then a dark box with two lines:**
+  - **Top line (white, Arial Bold 44):** "CAM A - HOOK 1" on the A side, "CAM B" on the B side.
+  - **Second line (yellow #FFD666, Arial Bold 28):** "Line 1   take 14   OWN WORDS".
+- **Section names come from the script beats:** HOOK 1, HOOK 2, Q1..Q5, Q3 INTRO (question openers), CLOSING. Plain words, never codes or dot separators.
+- **Box color says what the take is:**
+  - dark grey: as written;
+  - orange: OWN WORDS;
+  - red: FLUB;
+  - Rose/blue: AI voice (one colour per AI character, labelled with the character's name, e.g. "ASSISTANT VOICE (AI)");
+  - green: BONUS;
+  - teal: ON SET / CUTAWAY.
+- **Never cut off.** Every box is sized to its own text and capped at the half-frame width.
+- **Spanish or other-language AI lines get the subtitle burned in** at the bottom centre: white text on a black box.
+- **Pieces the editor adds by hand get labelled too** ("your find", "your add"). A picture-only insert gets CUTAWAY.
+- **Code:** `tools/build_scrub.py` `label_png()` draws this design, and the badge is the take's position among the takes kept for that line in the build.
+
+## Rough cut v1 from review notes (2026-11-17)
+- **Phone B-roll when the AI character talks.** While the AI voice on the phone speaks, show the phone (B cam). Go back to the talent's camera when the talent does something worth seeing, and also use the phone shot to cover a moment where the talent's face or performance doesn't hold.
+- **The call timer must run true.** The phone shows a live call timer. Within one continuous conversation, every phone shot's timer must move forward in step with the edit.
+  - Use the same take's B cam at its synced time. Example: the A cam ends at 261.55 s, so the B cam picks up at its synced 261.55 s.
+  - If that take has no B cam, borrow another take's phone shot with one fixed source offset for the whole scene (source = timeline time + K). The timer then still runs at real speed. Pick a window with nobody walking through the shot.
+  - Never mix B cams from different takes inside one call.
+- **Alternate openings sit in the timeline, not in other sequences.** Put each alternate right after the main version it competes with, with a label naming who asked for it ("ALT HOOK: take 8, client's pick"). Never at the end of the cut, never as a separate sequence.
+- **Legal-risk moments stay in, labelled** ("LEGAL CHECK"). The version without them comes after lock.
+- **Real voice recordings replace temp AI voices** as soon as the client sends them. Only generate words that are missing, with a clone of the same voice, and say which words are generated.
+- **Rough cut = one take per line.** Variations belong in the scrub. The scrubs stay as backups after v1, because rounds of "put this back in" always follow.
+- **Reveal lines across a whip:** when an off-screen line has to land between two whips (a short reveal line), slow both whips into one speed-ramped pan (out at ~60%, in at ~45%) until the line fits between the last word before it and the first word after it, with no overlap. Lay the line on its own tracks.
+- **One take for a closing monologue** when a take exists that runs the whole script; never stitch takes with mismatched hands or pose.
+- **Whip transitions cut whip-to-whip.** Measure each whip's direction (frame-to-frame phase correlation), pick an incoming whip going the same way, and cut mid-blur on both sides.
+- **Before every round, back up the editor's current sequence**, diff it against the last version, and build on the editor's cuts. Never rebuild over them.

@@ -2,6 +2,42 @@
 
 Every change to the rough-cut agent gets an entry here, newest first, in the same commit as the change.
 
+## 2026-11-17
+
+### Added
+- **Take Finder v15:** works on any project with no per-project data.
+  - You pick the parent (full scrub) and the child (Best 3 or rough cut) from the project's sequences. It needs two or more, and the choice is remembered per project.
+  - A clip in the child is matched to the parent by media file and source time (speed-changed clips included).
+  - "Show all takes" jumps the parent to that spot and lists every take of the line from its label clips. "Back to child" and "Follow" are there too.
+  - The old project-data panel is kept in `panel-takefinder/legacy/`.
+- `bridge/`: the Claude Adobe bridge (MCP server and the Premiere/After Effects panel). The token is never committed.
+- `install.sh`: one-step Mac install of the bridge and Take Finder (token, CEP panels, debug mode, Claude Code command).
+- README: install and Take Finder sections, with no client names.
+
+### Rules
+- Rules from the editor's rough cut v1 review in `rules-rough-cut-draft.md`:
+  - phone B-roll whenever the AI talks
+  - a call timer that always runs true (synced B cam, or one fixed offset per scene)
+  - alternate openings in-line with a "who asked" label
+  - legal-risk moments labelled
+  - real voice recordings replace temp AI voices
+  - one take per line in the rough cut, with the scrubs kept as backups
+  - whip-to-whip transitions matched by measured direction
+  - back up and diff the editor's sequence before every round
+  - reveal lines over speed-ramped whips
+  - one take for a closing monologue
+
+## 2026-11-16
+
+### Changed
+- Review labels: approved design. A yellow pick badge ("2/3") sits next to a two-line box ("CAM A - HOOK 1" / "Line 1   take 14   OWN WORDS"), colored by take type and never cut off. Rules in `rules-rough-cut-draft.md`, drawn by `build_scrub.py`.
+- Take Finder:
+  - follows raw recorder audio by recording time: words per take in the data, plus camera audio through sync offsets;
+  - a clicked clip resolves by its source time, not its file name;
+  - nearest-take fallback for hand-extended pieces;
+  - follows any hand-edited sequence's positions (`RC_XML_LIVE`).
+- `build_scrub.py`: AI voice pieces (`FO_DIR`, `FO_ONLY`), per-take `end` overrides from KEEP, tags from `take_tags.json`.
+
 ## 2026-11-10 (Concurrence)
 
 ### Added

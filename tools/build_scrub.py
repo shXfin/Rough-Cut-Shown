@@ -137,7 +137,7 @@ def file_el(path, kind):
         w, h = size(path)
         media = f'<video><samplecharacteristics><width>{w}</width><height>{h}</height></samplecharacteristics></video><audio><channelcount>2</channelcount></audio>'
     else:
-        media = f'<audio><channelcount>{2 if path.startswith(VO) else 4}</channelcount></audio>'
+        media = f'<audio><channelcount>{2 if (path.startswith(VO) or "/fo_wav/" in path) else 4}</channelcount></audio>'
     return (f'<file id="{fid}"><name>{escape(os.path.basename(path))}</name><pathurl>file://localhost{urllib.parse.quote(path)}</pathurl>'
             f'{RATE}<duration>{fr(dur(path))}</duration><media>{media}</media></file>')
 def clip(cid, path, kind, start, inp, length, enabled=True, fin=0, fout=0, punch=1.0):
@@ -158,22 +158,47 @@ def clip(cid, path, kind, start, inp, length, enabled=True, fin=0, fout=0, punch
             f'<start>{start}</start><end>{start+length}</end><in>{inp}</in><out>{inp+length}</out>{file_el(path, kind)}{st}{fx}</clipitem>')
 
 LBL = []   # burned-in labels for the multicam scrub export (Mateus): "CAM A - Take 1", take numbers restart every line
-def label_png(L, tnum, have):
+LN = lambda L: L[1:].lstrip("0") or "0"   # line id -> label number (L07b -> 7b)
+_tg = os.path.join(W, "take_tags.json"); TAGS = json.load(open(_tg)) if os.path.exists(_tg) else {}
+def label_png(L, tnum, have, pos=None, of=None):
+    """approved review label (Wajo 2.0, 2026-11-16): yellow pick badge "2/3" + two-line box per camera half"""
     from PIL import Image, ImageDraw, ImageFont
     d = os.path.join(W, "labels"); os.makedirs(d, exist_ok=True)
-    out = os.path.join(d, f"{L}_take{tnum}_{''.join(sorted(have))}.png")
+    tag = TAGS.get(f"{L}|{tnum}", "")   # take_tags.json: "OWN WORDS"/"IMPROV" (orange) / "FLUB" (red), per project
+    badge = f"{pos}/{of}" if pos and of else ""
+    out = os.path.join(d, f"{L}_take{tnum}_{''.join(sorted(have))}_{badge.replace('/', 'of')}{'_' + tag.replace(' ', '') if tag else ''}.png")
+    if os.path.exists(out): return out
+    beat = LINES[L].get("beat", "") if L in LINES else ""
+    sec = {"HOOKA": "HOOK 1", "HOOKB": "HOOK 2"}.get(beat) or SECTION.get(beat, beat.title() if beat.isupper() and len(beat) > 3 else beat)
+    im = Image.new("RGBA", (SW, SH), (0, 0, 0, 0)); g = ImageDraw.Draw(im)
+    big = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 44)
+    small = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 28)
+    bf = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Black.ttf", 62)
+    fill = {"IMPROV": (230, 120, 20, 225), "OWN WORDS": (230, 120, 20, 225), "FLUB": (200, 40, 40, 225)}.get(tag, (30, 30, 30, 200))
+    for k, (cam, _) in enumerate(CAMS):   # A on the left half, B on the right (ppro_grid.py); a missing camera gets no box
+        if cam not in have: continue
+        x = 28 + k * SW // 2
+        if badge:
+            bw = g.textlength(badge, font=bf) + 40
+            g.rounded_rectangle([x, 22, x + bw, 136], 14, fill=(255, 214, 0, 255)); g.text((x + 20, 30), badge, font=bf, fill=(0, 0, 0, 255)); x += bw + 12
+        top = f"CAM {cam} - {sec}" if k == 0 and sec else f"CAM {cam}"
+        sub = "   ".join(p for p in (f"Line {LN(L)}", f"take {tnum}", tag) if p)
+        w = min(max(g.textlength(top, font=big), g.textlength(sub, font=small)) + 36, SW // 2 - (x - k * SW // 2) - 28)
+        g.rounded_rectangle([x, 26, x + w, 132], 10, fill=fill)
+        g.text((x + 18, 32), top, font=big, fill=(255, 255, 255, 255)); g.text((x + 18, 88), sub, font=small, fill=(255, 214, 102, 255))
+    im.save(out); return out
+FO_DIR = os.environ.get("FO_DIR", ""); FO_ONLY = bool(os.environ.get("FO_ONLY"))   # FO_ONLY: Top 3 shows only the Fo voice, not the set reads
+def label_fo(L):
+    from PIL import Image, ImageDraw, ImageFont
+    out = os.path.join(W, "labels", f"{L}_FOVOICE.png"); os.makedirs(os.path.dirname(out), exist_ok=True)
     if os.path.exists(out): return out
     im = Image.new("RGBA", (SW, SH), (0, 0, 0, 0)); g = ImageDraw.Draw(im)
-    big = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 46)
+    big = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 44)
     small = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 28)
-    for k, cam in enumerate(c for c, _ in CAMS):   # A on the left half, B on the right (ppro_grid.py)
-        x = 28 + k * SW // 2
-        top = f"CAM {cam} - Take {tnum}" + ("" if cam in have else " (no camera)")
-        sub = f"Line {int(L[1:])}"
-        w = max(g.textlength(top, font=big), g.textlength(sub, font=small)) + 32
-        g.rounded_rectangle([x, 26, x + w, 26 + 104], 10, fill=(0, 0, 0, 170))
-        g.text((x + 16, 34), top, font=big, fill=(255, 255, 255, 255))
-        g.text((x + 16, 88), sub, font=small, fill=(255, 214, 102, 255))
+    top, sub = "FO VOICE (AI)", f"Line {LN(L)}"
+    w = max(g.textlength(top, font=big), g.textlength(sub, font=small)) + 36
+    g.rounded_rectangle([28, 26, 28 + w, 132], 10, fill=(40, 90, 200, 225))
+    g.text((46, 32), top, font=big, fill=(255, 255, 255, 255)); g.text((46, 88), sub, font=small, fill=(255, 214, 102, 255))
     im.save(out); return out
 def label_clip(cid, png, start, length):   # a still on the top track for the whole take
     fid = "f_" + os.path.basename(png).replace(".", "_")
@@ -200,7 +225,8 @@ ONLY = os.environ.get("LINE")   # takes-by-line: one short sequence per script l
 if ONLY: by_line = {ONLY: by_line.get(ONLY, [])}
 if os.environ.get("KEEP"):   # top3.json: only the chosen takes per line (Sam: 3 best takes, not 16-19)
     _k = json.load(open(os.environ["KEEP"]))
-    by_line = {L: [t for t in ts if any(t["take"] == k["take"] and t["src"] == k["src"] for k in _k.get(L, []))] for L, ts in by_line.items()}
+    by_line = {L: [dict(t, **({"end": k["end"]} if "end" in k else {})) for t in ts for k in _k.get(L, [])
+                   if t["take"] == k["take"] and t["src"] == k["src"]] for L, ts in by_line.items()}
 # your choices from Premiere and the Take Finder (overrides.json): takes, trims, lines you deleted
 _ovp = os.path.join(W, "overrides.json"); OVR = json.load(open(_ovp)) if os.path.exists(_ovp) else {}
 PICKS = {}
@@ -309,8 +335,25 @@ if RC:
             JOIN_OUT[La] = JOIN_IN[Lb] = cut
 for L in order:
     ts = sorted(by_line.get(L, []), key=lambda x: (x["src"], x["start"]))   # shooting order
-    if not ts: continue
     ln = LINES[L]
+    if not ts and not (FO_DIR and os.path.exists(os.path.join(FO_DIR, f"FO_{L}.wav"))): continue
+    fo_wav = os.path.join(FO_DIR, f"FO_{L}.wav") if FO_DIR else ""
+    if fo_wav and os.path.exists(fo_wav):   # Fo is an AI voice: play the generated line, picture = Trevor reacting on set
+        fl = fr(dur(fo_wav)); have = {}
+        if ts:
+            ref = ts[0]
+            for cam, _ in CAMS:
+                path, at = cam_for(cam, ref["src"], ref["start"], ref["start"] + fl / FPS)
+                if path: have[cam] = (path, at)
+        for cam, (path, at) in have.items():
+            v[cam].append(clip(f"v{cam}fo{n}", path, "video", t, fr(at), fl, enabled=GRID or cam == next(iter(have))))
+        aud.append(clip(f"afo{n}", fo_wav, "audio", t, 0, fl))
+        if GRID: LBL.append(label_clip(f"lblfo{n}", label_fo(L), t, fl))
+        markers.append(f'<marker><name>{escape(f"Line {LN(L)}, FO AI voice (generated)")}</name><comment>{escape(ln["text"])}</comment><in>{t}</in><out>-1</out></marker>')
+        report.append(dict(line=L, take=0, of=0, src=os.path.basename(fo_wav), at=round(t / FPS, 2), dur=round(fl / FPS, 2),
+                           cams="FO voice", frames={}, text=ln["text"], feed=False, part_feed="", start=0, wind=None, check=[]))
+        t += fl + fr(GAP_TAKE if (ts and not FO_ONLY) else GAP_LINE); n += 1
+        if FO_ONLY: continue
     for k, tk in enumerate(ts, 1):
         s0, s1 = max(tk["start"] - HANDLE, 0), tk["end"] + max(HANDLE, TAIL)
         if RC:   # lines that run on in one take join at the gap between them: no word plays twice
@@ -362,7 +405,7 @@ for L in order:
             if piece: aud.append(clip(f"a{cid}", piece, "audio", t, fr(PRE + a0), sl, fin=fi, fout=fo))
             elif wav: aud.append(clip(f"a{cid}", wav, "audio", t, fr(s0 + a0), sl))
             t += sl; length += sl
-        if GRID and length: LBL.append(label_clip(f"lbl{n}", label_png(L, tk.get("take", k), have), t_start, length))
+        if GRID and length: LBL.append(label_clip(f"lbl{n}", label_png(L, tk.get("take", k), have, k, len(ts)), t_start, length))
         t = t_start
         if len(segs) > 1: TIGHT.append((L, len(segs) - 1, round((s1 - s0) - sum(b - a for a, b in segs), 2)))
         flag = "" if tk.get("flag") == "green" else ", reworded or rough"
@@ -389,7 +432,7 @@ for L in order:
             if why: NEEDS.append((t / FPS, L, tnum, tof, ", ".join(why), sc))
             where += f" | in the scrub at {tc(sc)}" if sc is not None else ""
         # plain words for editors: "Line 10, take 4 of 6" (no codes like L10, no dot separators)
-        name = (f'{"CHECK (" + ", ".join(why) + "): " if why else ""}Line {int(L[1:])}, take {tnum} of {tof}, '
+        name = (f'{"CHECK (" + ", ".join(why) + "): " if why else ""}Line {LN(L)}, take {tnum} of {tof}, '
                 f'{WHO.get(ln.get("who"), "")}, {SECTION.get(ln["beat"], ln["beat"].title())}{flag}')
         color = '<color><alpha>0</alpha><red>255</red><green>0</green><blue>0</blue></color>' if miss or why else ""
         markers.append(f'<marker>{color}<name>{escape(name)}</name><comment>{escape(tk.get("text", ""))} || {escape(where)}</comment><in>{t}</in><out>-1</out></marker>')

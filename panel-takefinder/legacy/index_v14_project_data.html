@@ -1,0 +1,475 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Take Finder</title>
+<style>
+:root{--bg:#1d1d1d;--s1:#242424;--s2:#2b2b2b;--line:#333;--ink:#dedede;--ink2:#a3a3a3;--ink3:#6f6f6f;
+  --blue:#2d8ceb;--pick:#58b883;--bad:#e5675a;--warn:#d9a441;--flag:#d9b24c}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--ink);font:11.5px/1.45 -apple-system,"SF Pro Text",system-ui,sans-serif;user-select:none;-webkit-font-smoothing:antialiased}
+html,body{height:100%}
+body{display:flex;flex-direction:column;overflow:hidden}
+#scroll{flex:1;min-height:0;overflow-y:auto}
+header{flex:none;position:relative;z-index:3;background:var(--bg);padding:10px 12px 10px;border-bottom:1px solid var(--line)}
+.row{display:flex;gap:4px;align-items:center}
+h1{margin:0;flex:1;font-size:13px;font-weight:700;letter-spacing:-.01em;color:#f2f2f2}
+h1 small{font-size:10px;font-weight:500;color:var(--ink3);margin-left:4px}
+button{height:24px;padding:0 9px;background:transparent;color:var(--ink2);border:1px solid #3b3b3b;border-radius:3px;font:inherit;font-weight:500;cursor:pointer;white-space:nowrap}
+button:hover{color:var(--ink);border-color:#555;background:#262626}
+button:active{background:#2e2e2e}
+button.wide{flex:1;text-align:left;border-color:transparent;padding:0 8px;color:var(--ink2);font-weight:600}
+button.wide:hover{border-color:transparent;background:var(--s1)}
+.attn::before,.myfl::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:7px;vertical-align:1px}
+.attn::before{background:var(--bad)} .myfl::before{background:var(--flag)}
+button.fl{color:var(--flag);border-color:#4a412a}
+button.fl:hover{border-color:var(--flag);background:#2a2619}
+button.use{color:#8fc3f5;border-color:#2c4660}
+button.use:hover{border-color:var(--blue);background:#1d2a38}
+button.go{color:var(--ink)}
+#flagHere{flex:1}
+#rbX{position:absolute;right:4px;top:10px;width:22px;height:22px;line-height:21px;text-align:center;font-size:16px;color:#dbe9fb;cursor:pointer;border-radius:3px}
+#rbX:hover{background:rgba(0,0,0,.25);color:#fff}
+#rebuild{display:block!important;padding-right:30px;width:100%;height:28px;margin-top:8px;background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+#rebuild:hover{background:#3b97f0}
+select{width:100%;height:26px;margin-top:6px;padding:0 6px;background:var(--s1);color:var(--ink);border:1px solid #3b3b3b;border-radius:3px;font:inherit;outline:none}
+select:focus,textarea:focus{border-color:var(--blue)}
+textarea{width:100%;margin-top:6px;min-height:54px;padding:6px 8px;background:var(--s1);color:var(--ink);border:1px solid #3b3b3b;border-radius:3px;font:inherit;resize:vertical;outline:none;user-select:text}
+#flagBox{display:none;margin-top:8px;padding:8px;background:var(--s1);border-left:2px solid var(--flag)}
+#flagBox .ctx{color:var(--ink);font-weight:600}
+#status{min-height:15px;margin-top:6px;color:var(--ink3)}
+.list{display:none;margin-top:4px;max-height:260px;overflow:auto;background:var(--s1);border:1px solid var(--line);border-radius:3px}
+.list .it{display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border-top:1px solid var(--line)}
+.list .it:first-child{border-top:0}
+.list .it:hover{background:var(--s2)}
+.list .it.done{opacity:.4}
+.list .it.done b{text-decoration:line-through}
+.list input{flex:none;width:13px;height:13px;margin:2px 0 0;accent-color:var(--pick);cursor:pointer}
+.list .txt{flex:1;cursor:pointer}
+.list b{display:block;font-weight:600;color:var(--ink)}
+.list .why{color:var(--bad)} .list .note{color:var(--ink2)}
+.list .x{color:var(--ink3);cursor:pointer;padding:0 4px}
+.list .x:hover{color:var(--bad)}
+.list .foot{position:sticky;bottom:0;display:flex;padding:6px;border-top:1px solid var(--line);background:var(--s1)}
+#busy,#old{margin:10px 12px 0;padding:8px 10px;border-radius:3px;font-weight:600;background:var(--s1)}
+#busy{border-left:2px solid var(--bad);color:#f0c4be}
+#old{border-left:2px solid var(--warn);color:#ecd3a2}
+#line{padding:14px 12px 6px}
+#line .n{font-size:17px;font-weight:700;letter-spacing:-.02em;color:#f4f4f4}
+#line .who{margin-left:8px;color:var(--ink3);font-weight:500}
+#line .text{margin-top:5px;font-size:12.5px;line-height:1.5;color:var(--ink)}
+#line .check{margin-top:6px;color:var(--bad);font-weight:600}
+#hint{padding:28px 16px;color:var(--ink3);text-align:center;line-height:1.6}
+#takes{padding:6px 0 24px}
+.take{position:relative;display:grid;grid-template-columns:128px 1fr;column-gap:10px;padding:10px 12px;border-top:1px solid var(--line)}
+.take:hover{background:#212121}
+.take::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:transparent}
+.take.picked::before{background:var(--pick)}
+.take.chosen::before{background:var(--blue)}
+.take.here{background:rgba(88,184,131,.11)}
+.take.here::before{background:var(--pick);width:3px}
+.take.here .head b::after{content:"Playing";margin-left:8px;font-size:10px;font-weight:700;color:var(--pick);letter-spacing:.02em}
+.take.feed{opacity:.45}
+.pics{grid-row:1/span 3;display:flex;flex-direction:column;gap:3px}
+.pics div{position:relative}
+.pics img{display:block;width:128px;height:68px;object-fit:cover;border-radius:2px;background:#000}
+.pics span{position:absolute;left:0;bottom:0;padding:1px 5px;font-size:9.5px;font-weight:600;color:#fff;background:rgba(0,0,0,.6);border-radius:0 2px 0 2px}
+.nopic{height:68px;display:grid;place-items:center;color:var(--ink3);background:#151515;border-radius:2px;font-size:10.5px}
+.head{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.head b{flex:1;min-width:70px;font-size:12px;font-weight:700;color:#f0f0f0}
+.tags{display:flex;flex-wrap:wrap;gap:1px 10px;margin-top:4px;font-weight:600}
+.tags:empty{display:none}
+.t-pick{color:var(--pick)} .t-bad{color:var(--bad)} .t-warn{color:var(--warn)} .t-muted{color:var(--ink3);font-weight:500} .t-use{color:#8fc3f5}
+.said{margin-top:4px;color:var(--ink2);line-height:1.5}
+.search{position:relative;margin-top:10px}
+.search .mag{position:absolute;left:10px;top:9px;color:var(--ink3);pointer-events:none}
+.search input{-webkit-appearance:none;width:100%;height:32px;padding:0 30px 0 31px;background:#2a2a2a;color:#f0f0f0;border:1px solid #454545;border-radius:16px;font:inherit;font-size:12px;outline:none;user-select:text;box-shadow:inset 0 1px 2px rgba(0,0,0,.35)}
+.search input::-webkit-search-cancel-button{display:none}
+.search input:hover{border-color:#555}
+.search input:focus{border-color:var(--blue);background:#252a30;box-shadow:0 0 0 3px rgba(45,140,235,.18)}
+.search input:focus ~ #qk{display:none}
+.search input::placeholder{color:var(--ink3)}
+.search:focus-within .mag{color:var(--blue)}
+#qk{position:absolute;right:10px;top:8px;padding:0 5px;font:600 10px/15px -apple-system,system-ui;color:var(--ink3);border:1px solid #4a4a4a;border-radius:3px}
+#qx{position:absolute;right:6px;top:5px;height:22px;line-height:22px;padding:0 9px;border-radius:11px;background:#3a3a3a;color:#e8e8e8;font-size:11px;font-weight:600;cursor:pointer;display:none}
+#qx:hover{background:#4a4a4a}
+.search #qList{position:absolute;left:0;right:0;top:36px;z-index:5;max-height:min(340px,60vh);box-shadow:0 8px 24px rgba(0,0,0,.55)}
+.said .w{border-radius:2px;transition:background .08s,color .08s}
+.take.here .said{color:#8d8d8d}
+.said .w.past{color:#e6e6e6}
+.said .w.now{background:var(--pick);color:#0f1f16;font-weight:700;box-shadow:0 0 0 2px var(--pick)}
+#rcList .it{cursor:pointer} #rcList .it.on b{color:var(--blue)}
+#qList .it b{display:inline;margin-right:6px} #qList .it .m{color:var(--ink2)} #qList mark{background:none;color:#fff;font-weight:700}
+#qList .it.sel{background:var(--s2)}
+#qList{max-height:340px}
+button.pick{margin-top:6px;width:100%;border:1px solid #3b3b3b;color:var(--ink2)}
+button.pick::after{content:"";float:right;margin-top:8px;border:4px solid transparent;border-top-color:var(--ink3)}
+#scList .it{cursor:pointer} #scList .it.on b{color:var(--blue)}
+::-webkit-scrollbar{width:8px;height:8px} ::-webkit-scrollbar-thumb{background:#3a3a3a;border-radius:4px} ::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+<header>
+  <div class="row"><h1>Take Finder <small id="ver">v14</small></h1><button id="back" title="Back to the rough cut">Rough cut</button><button id="reload" title="Reload after a rebuild">Reload</button></div>
+  <div class="row" style="margin-top:10px"><button id="attn" class="wide attn">Needs your attention</button><button id="myfl" class="wide myfl">My flags</button></div>
+  <div id="attnList" class="list"></div>
+  <div id="flList" class="list"></div>
+  <div class="row" style="margin-top:6px"><button id="flagHere" class="fl">Flag this spot</button></div>
+  <div id="flagBox"><div class="ctx" id="flagCtx"></div><textarea id="flagNote" placeholder="What's wrong? e.g. cameraman talking at the end, wind, cut too tight"></textarea>
+    <div class="row" style="margin-top:4px"><button id="flagSave" class="fl">Save flag</button><button id="flagCancel">Cancel</button></div></div>
+  <div id="rbRow" style="display:none;position:relative"><button id="rebuild"></button><span id="rbX" title="Drop my swaps (nothing gets rebuilt)">&times;</span></div>
+  <div class="search"><svg class="mag" viewBox="0 0 16 16" width="13" height="13"><circle cx="6.8" cy="6.8" r="4.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.4 10.4 14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input id="q" type="search" placeholder="Search lines: glucose, Spanish, 18" autocomplete="off" spellcheck="false"><kbd id="qk">/</kbd><span id="qx" title="Cancel">Cancel</span><div id="qList" class="list"></div></div>
+  <button id="rcBtn" class="wide pick" title="The cut this panel jumps to and follows"></button>
+  <div id="rcList" class="list"></div>
+  <button id="scrubBtn" class="wide pick" title="Which scrub Show in scrub jumps to (switches by itself when you open a scrub)"></button>
+  <div id="scList" class="list"></div>
+  <div id="status"></div>
+</header>
+<main id="scroll"><div id="busy" style="display:none"></div>
+<div id="old" style="display:none">
+  You're in the OLD copy (before your last swap). <button id="openNew" style="margin-left:4px">Open the current rough cut</button></div>
+<div id="line"></div>
+<div id="hint">Click any clip in the rough cut or the scrub. Its other takes show up here.</div>
+<div id="takes"></div></main>
+<script>
+// any error shows on the panel itself, so a silent failure can't hide again
+window.onerror = function(m, u, l){ var h = document.getElementById("hint"); h.style.display = "block"; h.style.color = "#e5675a";
+  h.textContent = "Panel error: " + m + " (line " + l + ")"; };
+</script>
+<script>
+(function(){   // own scope: nothing here can clash with Premiere's panel globals
+const CEPHOST = window.__adobe_cep__;   // not "cep": Premiere's panels already define a global cep
+let D = null, current = null, lastKey = "", here = null, lastSeen = { seq: "", t: 0 }, stamp = "", tick = 0;
+let SC = null, lastCut = null;   // current scrub; the last cut (non-scrub) sequence you were in
+let STATE = { done: {} }, FLAGS = [], OVR = {}, flagCtx = null;
+const $ = id => document.getElementById(id);
+const ev = src => new Promise(r => { if (!CEPHOST) { r("__nocep"); return; } CEPHOST.evalScript(src, r); setTimeout(() => r("__timeout"), 8000); });
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const mmss = s => { s = Math.max(0, s); const m = Math.floor(s / 60), x = Math.floor(s % 60), f = Math.floor((s % 1) * 24); return `${m}:${String(x).padStart(2, "0")}:${String(f).padStart(2, "0")}`; };
+function status(m){ $("status").textContent = m; clearTimeout(status.t); status.t = setTimeout(() => $("status").textContent = "", 5000); }
+// files are read and written through Premiere's own scripting (File): Node's require isn't available in every Premiere
+const readJS = p => `(function(){var f=new File(${JSON.stringify(p)});if(!f.exists)return "";f.encoding="UTF-8";f.open("r");var s=f.read();f.close();return s;})()`;
+const writeJS = (p, s) => `(function(){var f=new File(${JSON.stringify(p)});f.encoding="UTF-8";f.open("w");f.write(${JSON.stringify(s)});f.close();return "ok";})()`;
+async function readJSON(p, dflt){ const raw = await ev(readJS(p)); try { return raw ? JSON.parse(raw) : dflt; } catch (e) { return dflt; } }
+async function writeJSON(p, v){ return ev(writeJS(p, JSON.stringify(v, null, 1))); }
+const STATE_F = "~/.shown/state.json", FLAGS_F = "~/.shown/flags.json";
+const ovrF = () => D.work + "/overrides.json";
+const lineOf = id => D && D.lines.find(x => x.id === id);
+const pickedTake = l => l.takes.find(t => t.picked);
+
+let TF = "~/.shown/takefinder.json";
+async function pickTF(){   // the data file for the OPEN Premiere project (one per project), else the latest one
+  const r = await ev(`(function(){var n=String(app.project.name).toLowerCase().replace(/\.prproj$/,"").replace(/--[0-9a-f-]+$/,"");
+    var d=new Folder("~/.shown/takefinder"),fs=d.exists?d.getFiles("*.json"):[];for(var i=0;i<fs.length;i++){var k=decodeURI(fs[i].name).replace(/\.json$/,"");
+    if(n.indexOf(k)==0||k.indexOf(n)==0)return fs[i].fsName;}
+    var p=app.project.path?String(app.project.path).toLowerCase():"";for(var i=0;i<fs.length;i++){var k=decodeURI(fs[i].name).replace(/\.json$/,"");if(p.indexOf("/"+k+"/")>=0)return fs[i].fsName;}
+    return "";})()`);
+  TF = r || "~/.shown/takefinder/none.json";   // no data for THIS project: never show another project's takes
+}
+async function load(){
+  $("hint").textContent = "Loading takes...";
+  await pickTF();
+  const raw = await ev(readJS(TF));
+  try { D = JSON.parse(raw); } catch (e) {
+    $("hint").style.color = "#e5675a";
+    $("hint").textContent = raw === "" ? "No takes for this project yet. Ask Claude to build its scrub first (data is kept per project)."
+      : "Couldn't load takes: " + String(raw).slice(0, 120); return; }
+  stamp = await ev(`(function(){var f=new File(${JSON.stringify(TF)});return f.exists?String(f.modified.getTime()):"";})()`);
+  STATE = await readJSON(STATE_F, { done: {} }); STATE.done = STATE.done || {};
+  FLAGS = await readJSON(FLAGS_F, []);
+  OVR = D.work ? await readJSON(ovrF(), {}) : {};
+  $("hint").style.color = ""; $("hint").textContent = "Click any clip in the rough cut or the scrub. Its other takes show up here.";
+  const scr = D.scrubs || [D.scrub_seq]; if (!SC || scr.indexOf(SC) < 0) SC = (STATE.scrub && scr.indexOf(STATE.scrub) >= 0) ? STATE.scrub : scr[0];
+  if (STATE.rc && STATE.rc[D.client]) D.rc_seq = STATE.rc[D.client];
+  drawScrub(); drawRC();
+  drawAttn(); drawFlags(); drawRebuild();
+  if (current) show(current, here);
+}
+// ---------- Needs your attention, with a tick per line ----------
+const doneKey = id => D.client + ":" + id;
+function drawAttn(){
+  const need = D.lines.filter(l => l.check.length), left = need.filter(l => !STATE.done[doneKey(l.id)]).length;
+  $("attn").textContent = need.length ? `Needs your attention (${left} of ${need.length} left)` : "Nothing needs your attention";
+  $("attnList").innerHTML = need.map(l => { const d = !!STATE.done[doneKey(l.id)];
+    return `<div class="it${d ? " done" : ""}"><input type="checkbox" data-done="${l.id}"${d ? " checked" : ""} title="Tick when it's sorted">
+      <div class="txt" data-id="${l.id}"><b>Line ${l.num}: ${esc(l.text.slice(0, 50))}</b><span class="why">${esc(l.check.join(", "))}</span></div></div>`; }).join("");
+}
+$("attnList").addEventListener("change", async e => {
+  const id = e.target.dataset.done; if (!id) return;
+  if (e.target.checked) STATE.done[doneKey(id)] = true; else delete STATE.done[doneKey(id)];
+  await writeJSON(STATE_F, STATE); drawAttn(); $("attnList").style.display = "block";
+});
+$("attnList").addEventListener("click", async e => {   // tap a line: show its takes and jump to it in the rough cut
+  const it = e.target.closest(".txt"); if (!it) return;
+  const l = lineOf(it.dataset.id); show(l.id, null);
+  const r = await ev(jumpLineJS(l)); status(r === "ok" ? `Rough cut: Line ${l.num}` : r === "none" ? `Line ${l.num} isn't in the rough cut` : "Couldn't find the rough cut");
+});
+$("attn").addEventListener("click", () => toggle("attnList"));
+function toggle(id){ const L = $(id), open = L.style.display !== "block"; ["attnList", "flList", "scList", "qList", "rcList"].forEach(x => $(x).style.display = "none"); L.style.display = open ? "block" : "none"; }
+// ---------- scrub switch (a plain list: Premiere's panels drop native dropdowns) ----------
+const scName = n => n.replace(/^.*?REVIEW \d+ - /, "");
+function drawScrub(){
+  const scr = D.scrubs || [D.scrub_seq];
+  $("scrubBtn").textContent = "Show in scrub: " + scName(SC || "");
+  $("scList").innerHTML = scr.map(n => `<div class="it${n === SC ? " on" : ""}" data-sc="${esc(n)}"><div class="txt"><b>${esc(scName(n))}</b></div></div>`).join("");
+}
+$("scrubBtn").addEventListener("click", () => toggle("scList"));
+$("scList").addEventListener("click", async e => { const it = e.target.closest("[data-sc]"); if (!it) return;
+  SC = it.dataset.sc; STATE.scrub = SC; await writeJSON(STATE_F, STATE); drawScrub(); $("scList").style.display = "none";
+  if (current) show(current, here); status("Show in scrub now goes to: " + scName(SC)); });
+// ---------- which cut the panel follows and jumps to (any sequence in the project; the scrubs have their own switch) ----------
+async function drawRC(){
+  $("rcBtn").textContent = "Follows: " + D.rc_seq;
+  const r = await ev(`(function(){var o=[];for(var i=0;i<app.project.sequences.numSequences;i++)o.push(app.project.sequences[i].name);return o.join("\\n");})()`);
+  const all = String(r || "").split("\n").filter(n => n && n.indexOf("__") !== 0 && (D.scrubs || []).indexOf(n) < 0);
+  $("rcList").innerHTML = all.map(n => `<div class="it${n === D.rc_seq ? " on" : ""}" data-rc="${esc(n)}"><div class="txt"><b>${esc(n)}</b></div></div>`).join("") || '<div class="it"><div class="txt">No other sequences</div></div>';
+}
+$("rcBtn").addEventListener("click", () => { drawRC(); toggle("rcList"); });
+$("rcList").addEventListener("click", async e => { const it = e.target.closest("[data-rc]"); if (!it) return;
+  D.rc_seq = it.dataset.rc; STATE.rc = STATE.rc || {}; STATE.rc[D.client] = D.rc_seq; await writeJSON(STATE_F, STATE);
+  $("rcList").style.display = "none"; drawRC(); status("Following " + D.rc_seq); });
+document.addEventListener("keydown", e => { if (e.key === "/" && document.activeElement !== $("q") && document.activeElement.tagName !== "TEXTAREA") { e.preventDefault(); $("q").focus(); } });
+// ---------- search: type any words or a line number; pick one to see its takes and jump there in the rough cut ----------
+let qSel = 0, qHits = [];
+const norm = t => String(t).toLowerCase().replace(/[^a-z0-9\u00c0-\u024f ]+/g, " ");
+function runSearch(){
+  const q = $("q").value.trim(); $("qx").style.display = "block"; $("qk").style.display = "none";
+  if (!D) return;
+  if (!q) {   // empty search = every line, in script order, to browse
+    qHits = D.lines.slice(); qSel = Math.max(0, qHits.findIndex(l => l.id === current));
+    $("qList").innerHTML = `<div class="it" style="color:var(--ink3)"><div class="txt">All ${qHits.length} lines. Type to search.</div></div>` + qHits.map((l, i) => `<div class="it${l.id === current ? " sel" : ""}" data-q="${l.id}"><div class="txt"><b>Line ${l.num}</b><span class="m">${esc(l.text)}</span>${l.rc_at == null ? '<span class="why"> not in the rough cut</span>' : ""}</div></div>`).join("");
+    ["attnList", "flList", "scList", "rcList"].forEach(x => $(x).style.display = "none"); $("qList").style.display = "block";
+    const c = $("qList").querySelector(".sel"); if (c) c.scrollIntoView({ block: "nearest" }); return;
+  }
+  const num = q.match(/^(?:line\s*|l)?(\d+)$/i); const words = norm(q).split(/\s+/).filter(Boolean);
+  qHits = D.lines.filter(l => num ? l.num === +num[1] : words.every(w => norm(l.text + " " + l.takes.map(t => t.text).join(" ")).indexOf(w) >= 0)).slice(0, 30);
+  qSel = 0;
+  const hl = t => { let h = esc(t); words.forEach(w => { if (w.length > 1) h = h.replace(new RegExp("(" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "ig"), "<mark>$1</mark>"); }); return h; };
+  $("qList").innerHTML = qHits.length ? qHits.map((l, i) => `<div class="it${i === qSel ? " sel" : ""}" data-q="${l.id}"><div class="txt"><b>Line ${l.num}</b><span class="m">${hl(l.text)}</span>${l.rc_at == null ? '<span class="why"> not in the rough cut</span>' : ""}</div></div>`).join("")
+    : `<div class="it"><div class="txt">No line matches "${esc(q)}"</div></div>`;
+  ["attnList", "flList", "scList", "rcList"].forEach(x => $(x).style.display = "none"); $("qList").style.display = "block";
+}
+async function goLine(id){
+  const l = lineOf(id); if (!l) return; show(id, null); closeSearch();
+  const r = await ev(jumpLineJS(l)); status(r === "ok" ? `Rough cut: Line ${l.num}` : r === "none" ? `Line ${l.num} isn't in the rough cut` : "Couldn't find the rough cut");
+}
+$("q").addEventListener("input", runSearch);
+$("q").addEventListener("focus", runSearch);
+$("q").addEventListener("keydown", e => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); qSel = Math.max(0, Math.min(qHits.length - 1, qSel + (e.key === "ArrowDown" ? 1 : -1)));
+    [...$("qList").querySelectorAll("[data-q]")].forEach((x, i) => { x.classList.toggle("sel", i === qSel); if (i === qSel) x.scrollIntoView({ block: "nearest" }); }); }
+  else if (e.key === "Enter" && qHits[qSel]) goLine(qHits[qSel].id);
+  else if (e.key === "Escape") closeSearch();
+});
+function closeSearch(){ $("q").value = ""; $("qList").style.display = "none"; $("qx").style.display = "none"; $("qk").style.display = ""; $("q").blur(); }
+$("qx").addEventListener("mousedown", e => { e.preventDefault(); closeSearch(); });
+$("qList").addEventListener("click", e => { const it = e.target.closest("[data-q]"); if (it) goLine(it.dataset.q); });
+// the line's own clips, found on the LIVE rough cut by name, so your cuts and moves never send it to the wrong spot
+function jumpLineJS(l){
+  const names = Object.keys(D.files || {}).filter(k => D.files[k][0] === l.id);
+  const fb = l.rc_at != null ? Math.round((l.rc_at + 0.05) * 254016000000) : -1;
+  return `(function(){var N=${JSON.stringify(names)},q=null;for(var i=0;i<app.project.sequences.numSequences;i++)if(app.project.sequences[i].name==${JSON.stringify(D.rc_seq)})q=app.project.sequences[i];
+    if(!q)return "missing";var best=-1;for(var a=0;a<q.audioTracks.numTracks;a++){var c=q.audioTracks[a].clips;for(var k=0;k<c.numItems;k++){var nm=c[k].projectItem?c[k].projectItem.name:c[k].name;
+    if((N.indexOf(nm)>=0||N.indexOf(c[k].name)>=0)&&(best<0||c[k].start.seconds<best))best=c[k].start.seconds;}}
+    var t=best>=0?String(Math.round((best+0.05)*254016000000)):(${fb}>=0?"${fb}":"");if(!t)return "none";app.project.openSequence(q.sequenceID);q.setPlayerPosition(t);return "ok";})()`;
+}
+// ---------- Flags: mark anything you hear or see, tick it off, copy the list to Claude ----------
+function drawFlags(){
+  const mine = FLAGS.filter(f => f.client === D.client), left = mine.filter(f => !f.done).length;
+  $("myfl").textContent = mine.length ? `My flags (${left} of ${mine.length} left)` : "My flags (none yet)";
+  $("flList").innerHTML = (mine.map(f => `<div class="it${f.done ? " done" : ""}"><input type="checkbox" data-fdone="${f.id}"${f.done ? " checked" : ""} title="Tick when it's sorted">
+      <div class="txt" data-fid="${f.id}"><b>${esc(f.where)}</b><span class="note">${esc(f.note || "(no note)")}</span></div><span class="x" data-del="${f.id}" title="Remove">x</span></div>`).join("")
+    || `<div class="it"><div class="txt">No flags yet. Use "Flag this spot" or the Flag button on any take.</div></div>`)
+    + `<div class="foot"><button id="copyFl" class="fl" style="flex:1">Copy open flags for Claude</button></div>`;
+}
+function flagText(){
+  const open = FLAGS.filter(f => f.client === D.client && !f.done);
+  return `Take Finder flags, ${D.client} (${open.length}):\n` + open.map((f, i) => `${i + 1}. ${f.where}: ${f.note || "(no note)"}`).join("\n");
+}
+function copy(text){ const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select();
+  let ok = false; try { ok = document.execCommand("copy"); } catch (e) {} t.remove(); return ok; }
+$("flList").addEventListener("click", async e => {
+  if (e.target.id === "copyFl") { status(copy(flagText()) ? "Copied. Paste it to Claude (or just say: check my flags)." : "Couldn't copy. Say \"check my flags\" to Claude instead."); return; }
+  const del = e.target.dataset.del;
+  if (del) { FLAGS = FLAGS.filter(f => f.id !== del); await writeJSON(FLAGS_F, FLAGS); drawFlags(); $("flList").style.display = "block"; return; }
+  const it = e.target.closest(".txt"); if (!it || !it.dataset.fid) return;
+  const f = FLAGS.find(x => x.id === it.dataset.fid); if (!f) return;
+  if (f.line) show(f.line, f.take || null);
+  const r = await ev(jumpJS(f.seq, f.t + 0.02)); status(r === "ok" ? "Jumped to the flag" : "Couldn't find that sequence");
+});
+$("flList").addEventListener("change", async e => {
+  const id = e.target.dataset.fdone; if (!id) return;
+  const f = FLAGS.find(x => x.id === id); f.done = e.target.checked; await writeJSON(FLAGS_F, FLAGS); drawFlags(); $("flList").style.display = "block";
+});
+$("myfl").addEventListener("click", () => toggle("flList"));
+function openFlag(ctx){
+  flagCtx = ctx; $("flagCtx").textContent = "Flag: " + ctx.where; $("flagNote").value = "";
+  $("flagBox").style.display = "block"; $("flagNote").focus();
+}
+$("flagHere").addEventListener("click", async () => {   // the playhead (or selected clip) in whatever sequence is open
+  const r = await ev(SEL); const [seq, ts, nm] = String(r).split("|"); const t = parseFloat(ts);
+  if (!seq || isNaN(t)) { status("Open the rough cut or the scrub first"); return; }
+  const id = whereIs(seq, t, nm); const l = id && lineOf(id.line);
+  const name = seq === D.rc_seq ? "Rough cut" : (D.scrubs || []).indexOf(seq) >= 0 ? "Scrub" : seq;
+  const tk = l && id.take ? l.takes.find(x => x.take === id.take) : null;
+  openFlag({ seq, t, line: l ? l.id : null, take: id ? id.take : null,
+    where: `${name} at ${mmss(t)}` + (l ? `, Line ${l.num}` + (tk ? `, take ${tk.take} of ${tk.of}` : "") : "") });
+});
+$("takes").addEventListener("click", async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const l = lineOf(current), t = l.takes[+b.dataset.i];
+  if (b.classList.contains("go")) {
+    let seq = SC, at = atIn(t, SC);
+    if (at == null) { seq = (D.scrubs || [D.scrub_seq]).find(n => atIn(t, n) != null); at = seq ? atIn(t, seq) : null; }
+    if (at == null) { status("This take isn't in any scrub"); return; }
+    const r = await ev(jumpJS(seq, at + 0.05));
+    status(r === "ok" ? `${seq === SC ? "" : "Not in this scrub, opened the full one. "}Line ${l.num}, take ${t.take}` : "Couldn't find the scrub sequence");
+  } else if (b.classList.contains("fl")) {
+    openFlag({ seq: SC, t: atIn(t, SC) != null ? atIn(t, SC) : t.scrub_at, line: l.id, take: t.take, where: `Line ${l.num}, take ${t.take} of ${t.of} (scrub at ${mmss(t.scrub_at)})` });
+  } else if (b.classList.contains("use")) {
+    if (OVR[l.id] && OVR[l.id].take === t.take) { delete OVR[l.id]; status(`Line ${l.num}: back to Claude's pick`); }
+    else { OVR[l.id] = { take: t.take, src: t.src, how: "Use this take" }; status(`Line ${l.num}: take ${t.take} goes in on the next rebuild`); }
+    await writeJSON(ovrF(), OVR); drawRebuild(); show(l.id, here);
+  }
+});
+$("flagSave").addEventListener("click", async () => {
+  if (!flagCtx) return;
+  FLAGS.push(Object.assign({ id: String(Date.now()), client: D.client, note: $("flagNote").value.trim(), done: false,
+    when: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16).replace("T", " ") }, flagCtx));
+  await writeJSON(FLAGS_F, FLAGS); $("flagBox").style.display = "none"; flagCtx = null; drawFlags(); status("Flag saved");
+});
+$("flagCancel").addEventListener("click", () => { $("flagBox").style.display = "none"; flagCtx = null; });
+// ---------- Use this take: queued, then one rebuild applies them all ----------
+function pending(){   // your choices that the rough cut doesn't have yet
+  return Object.keys(OVR).filter(id => { const l = lineOf(id), p = l && pickedTake(l); return l && !(p && p.take === OVR[id].take && p.src === OVR[id].src); });
+}
+function drawRebuild(){
+  const n = pending().length, b = $("rebuild");
+  $("rbRow").style.display = n ? "block" : "none";
+  b.textContent = `Rebuild rough cut with your ${n} swap${n > 1 ? "s" : ""} (about 3 min)`;
+}
+$("rbX").addEventListener("click", async () => {
+  pending().forEach(id => delete OVR[id]); await writeJSON(ovrF(), OVR); drawRebuild(); if (current) show(current, here);
+  status("Your swaps were dropped. The rough cut stays as it is.");
+});
+$("rebuild").addEventListener("click", async () => {
+  const r = await ev(`(function(){var f=new File(${JSON.stringify(D.work + "/Rebuild rough cut.command")});if(!f.exists)return "missing";f.execute();return "ok";})()`);
+  status(r === "ok" ? "Rebuilding in Terminal. Your old rough cut is kept in Sequences/Old." : "Rebuild script not found. Ask Claude to set it up.");
+});
+// ---------- the take cards ----------
+function show(id, hereTake){
+  const l = lineOf(id); if (!l) return;
+  current = id; here = hereTake; $("hint").style.display = "none";
+  const ov = OVR[id];
+  $("line").innerHTML = `<div><span class="n">Line ${l.num}</span><span class="who">${esc(l.who)}, ${l.takes.length} takes</span></div>
+    <div class="text">${esc(l.text)}</div>${l.check.length ? `<div class="check">Needs your ear: ${esc(l.check.join(", "))}</div>` : ""}`;
+  const order = l.takes.map((t, i) => i).sort((a, b) => (l.takes[b].take === hereTake) - (l.takes[a].take === hereTake) || (!!l.takes[b].picked) - (!!l.takes[a].picked));
+  $("takes").innerHTML = order.map(i => { const t = l.takes[i];
+    const chosen = ov && ov.take === t.take && ov.src === t.src;
+    const pics = Object.keys(t.thumbs || {}).sort().map(c => t.thumbs[c] ?
+      `<div><img src="file://${encodeURI(t.thumbs[c])}"><span>${c} cam</span></div>` : "").join("") || '<div class="nopic">sound only</div>';
+    const tags = [t.picked ? '<span class="t-pick">In your rough cut</span>' : "",
+                  chosen && !t.picked ? '<span class="t-use">Your choice, goes in on the next rebuild</span>' : "",
+                  t.part_feed ? `<span class="t-bad">Cameraman reads part of it: "${esc(t.part_feed)}" (skip)</span>`
+                    : t.feed ? '<span class="t-bad">Cameraman reading it (skip)</span>' : "",
+                  t.wind ? '<span class="t-warn">Windy</span>' : "",
+                  ...["A", "B"].filter(c => !t.cams.includes(c)).map(c => `<span class="t-muted">No ${c} camera</span>`)].join("");
+    const use = t.picked && !ov ? "" : `<button class="use" data-i="${i}">${chosen ? "Undo my choice" : "Use this take"}</button>`;
+    return `<div class="take${t.picked ? " picked" : ""}${chosen ? " chosen" : ""}${t.feed ? " feed" : ""}${hereTake === t.take ? " here" : ""}">
+      <div class="pics">${pics}</div>
+      <div class="head"><b>Take ${t.take} of ${t.of}</b><button class="fl" data-i="${i}" title="Flag this take">Flag</button>${use}<button class="go" data-i="${i}">Show in scrub</button></div>
+      <div class="tags">${tags}</div><div class="said" data-take="${t.take}">${t.w && t.w.length ? t.w.map(w => `<span class="w" data-a="${w[1]}" data-b="${w[2]}">${esc(w[0])}</span>`).join(" ") : `"${esc(t.text)}"`}</div></div>`;
+  }).join("");
+  const h = document.querySelector(".take.here"); if (h) h.scrollIntoView({ block: "nearest" });
+}
+function markWord(rec){
+  const box = document.querySelector(here != null ? `.said[data-take="${here}"]` : ".take.picked .said");
+  document.querySelectorAll(".said .w.now, .said .w.past").forEach(x => { if (!box || !box.contains(x)) x.classList.remove("now", "past"); });
+  if (!box || rec == null) return;
+  let hit = null;
+  box.querySelectorAll(".w").forEach(x => { const a = +x.dataset.a, b = +x.dataset.b;
+    x.classList.toggle("past", b <= rec); if (a <= rec + 0.02 && rec < b + 0.12) hit = x; x.classList.remove("now"); });
+  if (hit) { hit.classList.add("now"); hit.classList.remove("past"); }
+}
+const atIn = (t, seq) => (t.at && t.at[seq] != null) ? t.at[seq] : (seq === D.scrub_seq ? t.scrub_at : null);
+function jumpJS(seqName, sec){
+  const ticks = Math.round(sec * 254016000000);
+  return `(function(){var q=null;for(var i=0;i<app.project.sequences.numSequences;i++)if(app.project.sequences[i].name==${JSON.stringify(seqName)})q=app.project.sequences[i];
+    if(!q)return "missing";app.project.openSequence(q.sequenceID);q.setPlayerPosition("${ticks}");return "ok";})()`;
+}
+$("back").addEventListener("click", async () => {
+  const l = D && lineOf(current);
+  const r = await ev(jumpJS(lastCut || D.rc_seq, l && l.rc_at != null && (!lastCut || lastCut === D.rc_seq) ? l.rc_at + 0.05 : 0));
+  status(r === "ok" ? "Back in the rough cut" : "Couldn't find the rough cut sequence");
+});
+$("openNew").addEventListener("click", async () => { const r = await ev(jumpJS(D.rc_seq, 0)); status(r === "ok" ? "Opened the current rough cut" : "Couldn't find it"); });
+$("reload").addEventListener("click", () => { load(); status("Reloaded"); });
+
+// follow Premiere: the selected clip (or the playhead) picks the line shown here. The sound clip's FILE names the
+// take, so a take you dragged from the scrub into the rough cut by hand is still recognised after you move things.
+// follow Premiere. The PLAYHEAD wins whenever it moves (playing, scrubbing, jumping); a clip you click wins when the
+// selection changes. The sound clip's FILE names the take, so it works in any sequence: a take you dragged in by hand,
+// or the old copy kept in Sequences/Old.
+const SEL = `(function(){var q=app.project.activeSequence;if(!q)return "";var s=q.getSelection(),st=-1,sn="",sst="",sin="";
+  for(var i=0;i<s.length;i++)if(s[i].start){if(st<0)st=s[i].start.seconds+0.05;if(s[i].mediaType=="Audio"&&s[i].projectItem&&!sn){sn=s[i].projectItem.name;sst=s[i].start.seconds;sin=s[i].inPoint.seconds;}}
+  var p=q.getPlayerPosition().seconds,pn="",pst="",pin="";
+  for(var a=0;a<q.audioTracks.numTracks&&!pn;a++){var c=q.audioTracks[a].clips;for(var k=0;k<c.numItems;k++)if(c[k].start.seconds<=p&&p<c[k].end.seconds&&!c[k].disabled&&c[k].projectItem&&!/^roomtone/i.test(c[k].projectItem.name)&&!/\.(crm|mov|mp4|mxf|braw|r3d)$/i.test(c[k].projectItem.name)){pn=c[k].projectItem.name;pst=c[k].start.seconds;pin=c[k].inPoint.seconds;break;}}
+  for(var a=0;a<q.audioTracks.numTracks&&!pn;a++){var c=q.audioTracks[a].clips;for(var k=0;k<c.numItems;k++)if(c[k].start.seconds<=p&&p<c[k].end.seconds&&!c[k].disabled&&c[k].projectItem&&/\.(mov|mp4|mxf)$/i.test(c[k].projectItem.name)){pn=c[k].projectItem.name;pst=c[k].start.seconds;pin=c[k].inPoint.seconds;break;}}
+  return [q.name,p,pn,st,sn,pst,pin,sst,sin].join("|");})()`;
+function whereIs(seq, t, nm){
+  const f = D.files && D.files[nm]; if (f) return { line: f[0], take: f[1] == null ? null : f[1] };
+  if (seq === D.rc_seq) { const l = D.lines.find(x => x.rc_at != null && x.rc_at <= t && t < x.rc_at + x.rc_dur); return l ? { line: l.id, take: null } : null; }
+  if ((D.scrubs || [D.scrub_seq]).indexOf(seq) >= 0) for (const l of D.lines) { const tk = l.takes.find(x => { const a = atIn(x, seq); return a != null && a <= t && t < a + x.dur; }); if (tk) return { line: l.id, take: tk.take }; }
+  return null;
+}
+let lastPH = null, lastSel = "", lastSeq = "";
+async function poll(){
+  try {
+    if (D) {
+      if (tick % 8 === 0) { const old = TF; await pickTF(); if (TF !== old) { await load(); status("Project changed. Panel switched to its takes."); } }
+      if (++tick % 4 === 0) {   // a rebuild rewrote the data: reload by itself
+        const s = await ev(`(function(){var f=new File(${JSON.stringify(TF)});return f.exists?String(f.modified.getTime()):"";})()`);
+        if (s && stamp && s !== stamp) { await load(); status("Rough cut rebuilt. Panel updated."); }
+      const b = await ev(readJS("~/.shown/busy.json")); let busy = null; try { busy = b ? JSON.parse(b) : null; } catch (e) {}
+      $("busy").style.display = busy ? "block" : "none";
+      if (busy) $("busy").textContent = `Rebuilding ${busy.seq} (since ${busy.since}). Hold your edits in it until this goes away: edits made now won't be replaced, the rebuild stops instead.`;
+      }
+      const r = String(await ev(SEL)); const [seq, ps, pn, ss, sn, pst, pin, sst, sin] = r.split("|"); const ph = parseFloat(ps), st = parseFloat(ss);
+      // any clip -> (recorder take, recording second): raw recorder audio as is, camera audio through its sync offset
+      const toRec = (nm, cs, ci, t) => { if (!nm || cs === "" || cs == null) return null;
+        if (D.cams && D.cams[nm]) return { src: D.cams[nm][0], rec: parseFloat(ci) + (t - parseFloat(cs)) - D.cams[nm][1] };
+        if (D.lines.some(l => l.takes.some(x => x.src === nm))) return { src: nm, rec: parseFloat(ci) + (t - parseFloat(cs)) };
+        return null; };
+      const takeAt = h => { if (!h) return null; const T = (h.src.match(/T\d+/) || [""])[0];
+        let near = null, nd = 6;   // inside a take's words; else the nearest take on the same recording (your extended edits)
+        for (const l of D.lines) for (const x of l.takes) if (x.src && (x.src.match(/T\d+/) || [""])[0] === T && x.w && x.w.length) {
+          const a = x.w[0][1], b = x.w[x.w.length - 1][2];
+          if (a - 0.4 <= h.rec && h.rec <= b + 0.6) return { line: l.id, take: x.take };
+          const d = h.rec < a ? a - h.rec : h.rec - b; if (d < nd) { nd = d; near = { line: l.id, take: x.take }; } }
+        return near; };
+      if (seq && seq !== lastSeq) { lastSeq = seq;
+        if ((D.scrubs || []).indexOf(seq) >= 0 && seq !== SC) { SC = seq; drawScrub(); }
+        else if ((D.scrubs || []).indexOf(seq) < 0) lastCut = seq; $("old").style.display = /\(before your last swap\)/.test(seq) ? "block" : "none"; }
+      let w = null;
+      // the recording time under the playhead: from a cut piece (its offset) or the raw recorder file itself (offset 0)
+      const isRaw = pn && D.lines.some(l => l.takes.some(t => t.src === pn));
+      const bb = D.base && D.base[pn] ? D.base[pn][1] : (isRaw ? 0 : null);
+      const rec = bb != null && pst !== "" ? bb + parseFloat(pin) + (ph - parseFloat(pst)) : null;
+      const byRec = () => { if (rec == null || !isRaw) return null; for (const l of D.lines) for (const t of l.takes)
+        if (t.src === pn && t.w && t.w.length && t.w[0][1] - 0.3 <= rec && rec <= t.w[t.w.length - 1][2] + 0.3) return { line: l.id, take: t.take }; return null; };
+      const selKey = seq + "|" + ss + "|" + sn;
+      if (!isNaN(ph) && (lastPH === null || Math.abs(ph - lastPH) > 0.04)) { lastPH = ph; w = takeAt(toRec(pn, pst, pin, ph)) || byRec() || whereIs(seq, ph, pn); }
+      else if (selKey !== lastSel && !isNaN(st)) { w = takeAt(toRec(sn, sst, sin, st)) || whereIs(seq, st, sn); }
+      lastSel = selKey;
+      if (w && (w.line !== current || w.take !== here)) show(w.line, w.take);
+      markWord(rec);
+    }
+  } catch (e) { status("Tracking hiccup: " + e.message); }
+  setTimeout(poll, 500);
+}
+load(); poll();
+})();
+</script>
+</body>
+</html>
