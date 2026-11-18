@@ -477,6 +477,34 @@ Every shot in a review scrub (full scrub or Best 3) carries a burned-in label on
 - **Slowed whips reveal the set.** Add Directional Blur (horizontal) to the whip frames so the pan reads as a smear.
 - **Check B-roll windows at 1 frame per second** for people walking through before using them, not every 2 seconds.
 
+## Review rounds under time pressure (2026-11-19)
+- **Triage every note batch into "by hand" and "by agent" before touching the timeline.** Small surgical edits (trim, cut, nudge a line, remove or swap a shot, short ripple, extend a clip) are faster and safer by the editor's hand: give the editor the exact timecode and what to do. The agent takes the heavy work: finding takes and lines, transcripts and sync, mapping notes to timecodes, audio cleanup and sourcing sounds, masks and renders, pre-export checks, reply drafts.
+- **Map every note to the current timeline.** Reviewers comment on the exported version; after any ripple, give both times (export time and timeline time) in one table with a status per note.
+
+## Scripted edits: what breaks (2026-11-19)
+- **A scripted ripple moves clips but not transitions.** Fades and crossfades stay where the clips used to be. An orphaned audio transition (on empty space or mid-clip) can silence the whole track after it, in playback and in export. After any scripted shift, list every track's transitions and move or remove any that no longer sit on a clip edge. Check copies too: backups cloned after the shift carry the same orphans.
+- **Check audio one track at a time.** A full-mix export can hide a silent track under the others. Solo each track (mute the rest), export the range, measure.
+- **Everything placed by script sits on whole frames.** Set times in ticks (frame number x ticks per frame), never seconds. A clip that ends a fraction of a frame late still draws on the next frame (example: a phone-screen overlay showed on the talent's face for one frame at a cut into a speed-changed clip). The editor must be able to trim or delete it by hand and see the result at once.
+- **Next to an off-grid clip** (speed changes leave clip edges off the frame grid), check which frame Premiere actually shows the clip on and stop the overlay there. Export the frame before and after every overlay edge and look at them.
+- **Flush cached frames after scripted edits.** Premiere can keep showing a frame it drew before the edit, so a removed layer still appears. Toggle the touched clips off and on, or Sequence > Delete Render Files.
+- **"Place one frame long, then trim" eats the next clip's first frame.** After placing, check that the neighbours' starts and in points did not move.
+- **Changing in and out points of an existing clip by script can leave it rendering black.** Re-lay the piece fresh with the same look instead.
+- **Clips with AI audio enhancement can block export after being moved by script** until they are re-laid.
+
+## On-screen numbers: overlays that stay editable (2026-11-19)
+- **Continuity of the talent's body between angles matters as much as the number.** If one angle shows hands on the table, the other angle must too. Find matching footage by running pose detection on the synced angle of the same take (wrist height per second), not by eye.
+- **When the only matching footage shows the wrong number,** patch the number: one fit of font, size and colour against the real digits, then one render per shot, keeping the reading the shot had before so every later reading still follows. A locked-off shot needs no tracking.
+- **Fonts: set every axis of a variable font explicitly.** Passing one value to a multi-axis font sets the first axis (often width), not weight.
+- **Render overlays with handles** (about 2 s before and after) so the editor can lengthen the shot by hand. Nest each shot with its overlay so they trim and move together.
+- **Renders read only the crop they need.** Never load a whole plate into memory; run long renders at low priority.
+
+## Before every export (2026-11-19)
+- **Sequence In/Out set to the main cut,** not the end of the sequence (parked material and labels often sit after the cut). Labels and tags off inside the cut.
+- **Speed-changed dialogue:** compare against the previous version. Pitch should move under about 0.5 semitone (110% speed without keeping pitch is +1.65). A mono voice nested inside a stereo sequence can come back about 3 dB quieter (pan law): measure speech level before and after the speed change and add the gain back.
+
+## Project hygiene (2026-11-19)
+- **Colour-label sequences:** the timeline in current use one colour (yellow), the main scrub another (blue), every sequence the agent creates a third (magenta), and move backups into a Backups bin. Move the "current" colour when work moves to a new timeline.
+
 ## How to write these rules (hard rule)
 - Every rule must make sense on any project. Write the general principle; a project's specifics (a character's name, "the phone", one camera's numbers) can only appear as a labelled example.
 - No client, project or person names: the repo is public.

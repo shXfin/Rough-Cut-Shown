@@ -2,6 +2,20 @@
 
 Every change to the rough-cut agent gets an entry here, newest first, in the same commit as the change.
 
+## 2026-11-19
+
+### Added
+- Rules from a fast review round (`rules-rough-cut-draft.md`):
+  - Triage each note batch into edits the editor does by hand (with timecodes) and work the agent does.
+  - Scripted ripples leave transitions behind; orphaned audio fades can silence a whole track. Find and fix them after every scripted shift, and check audio one track at a time.
+  - Everything placed by script sits on whole frames, edges next to speed-changed clips are checked frame by frame, and cached frames are flushed after scripted edits so hand edits show at once.
+  - On-screen number overlays: match the talent's pose between angles with pose detection, one font fit and one render per shot, every variable-font axis set, handles for hand trimming, shot and overlay nested together.
+  - Export checks: In/Out on the main cut, pitch and level checked on speed-changed dialogue (nested mono voice can drop about 3 dB).
+  - Colour labels for the current timeline, the main scrub and generated sequences.
+
+### Changed
+- `CHANGES.md`: person and project names replaced with roles.
+
 ## 2026-11-18
 
 ### Fixed

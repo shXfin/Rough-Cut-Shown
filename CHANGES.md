@@ -7,14 +7,14 @@ Newest first. Each line: what changed · why · how we know it worked.
 
 **Tools and setup**
 - **Pushed the pipeline to GitHub** (`shXfin/Rough-Cut-Shown`, private, Sam added). Code and rules only; no client footage, audio, scripts or transcripts.
-- **Proxies straight from Aspect, shrunk to 540p** (`tools/fetch_proxies.sh`). Notch: 43 clips, 2 h of footage, 208 MB instead of 270 GB of originals. Nothing is created or changed on Aspect.
+- **Proxies straight from Aspect, shrunk to 540p** (`tools/fetch_proxies.sh`). The test project: 43 clips, 2 h of footage, 208 MB instead of 270 GB of originals. Nothing is created or changed on Aspect.
 - **Recorder audio read straight from Aspect originals,** never copied, never proxies.
 - **Installing (not used yet):** CrisperWhisper (catches "um"s and stumbles for take scoring), active speaker detection (who is talking on screen, for two-person shoots), MediaPipe (face, eyes, blinks). Will be added one at a time and measured.
 
-**Learned on Notch (second test)**
-- **Find the shooting script, not the latest draft.** Notch's script doc had V1 to V4; the "tele" (teleprompter) section is what was shot.
+**Learned on the test project (second test)**
+- **Find the shooting script, not the latest draft.** The test project's script doc had V1 to V4; the "tele" (teleprompter) section is what was shot.
 - **Check every clip for sound, not just the first.** Only 1 of 18 B cam proxies is silent; checking just the first file nearly triggered a 48 GB download.
-- **Camera clocks can't be trusted:** Notch B cam reads 1 Jan 2000. Sync by matching words.
+- **Camera clocks can't be trusted:** the test project's B cam reads 1 Jan 2000. Sync by matching words.
 
 ## Nov 2 to 3, 2026 (Wajo test, v01 to v11)
 
@@ -45,7 +45,7 @@ Newest first. Each line: what changed · why · how we know it worked.
 **Picture**
 - **Cameras chosen by role, not letter** (Socrates: A for hooks, C for demos). Show whoever is talking.
 - **Empty-chair check** on locked-off shots: switch to the camera that follows her.
-- **Hold the shot like Shown's editors** (measured from Rayline and Notch rough cuts): camera cuts down from 26 to 16, typical shot 4.7 s to 9.8 s.
+- **Hold the shot like Shown's editors** (measured from an earlier project and the test project rough cuts): camera cuts down from 26 to 16, typical shot 4.7 s to 9.8 s.
 - **Section holds of 2 s** with "Trim point" markers, so the next editor has room.
 
 **Premiere**
@@ -60,10 +60,10 @@ Newest first. Each line: what changed · why · how we know it worked.
 ## Open (not done yet)
 - Face-jump fix at same-camera cuts (v12): face detection, switch angle or punch in with no black edges.
 - Wajo A cam lip sync still unverified.
-- Notch blind cut, compared by Shafin against Notch Rough Cut V2.
+- Blind cut, compared by the editor against the human Rough Cut V2.
 - One-command runner so anyone can use it (Andrii's ask); Shownroom page after that.
 
-## 2026-11-04 (Notch)
+## 2026-11-04 (the test project)
 - build_scrub.py: scrub (every take, labelled, A over B) and rough cut from picks. 16:9 1080p, cameras fill height.
   Clean sound per piece (hum, noise, sibilance, level), speaker's own mic per piece, visible fades (volume keyframes).
   Prints WARNING and marks `NO B CAM` on any take a camera is missing from.
@@ -81,7 +81,7 @@ Newest first. Each line: what changed · why · how we know it worked.
   lists lines a person should hear (wind gust, dragged word, tightened pause, reworded).
 - Wind measured on the worst half second per take; 0.4 s kept after each line's last word.
 
-## 2026-11-05 (Notch, from Shafin's review)
+## 2026-11-05 (from the editor's review)
 - stumble.py: part feeds (cameraman reading half the line inside a take, word-level level check). pick.py skips them.
 - Take Finder v6: attention ticks, flags with notes + copy list, "Use this take" + one-button rebuild, clips named by
   file so hand swaps are understood. learn_swaps.py, rebuild_rc.sh, overrides.json, ppro_swap BACKUP=1.
