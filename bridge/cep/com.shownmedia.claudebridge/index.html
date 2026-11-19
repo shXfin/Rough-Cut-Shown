@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <title>Claude Bridge</title>
   <style>
-    :root { --bg: #232323; --fg: #d6d6d6; --muted: #8a8a8a; --ok: #4cc38a; --bad: #e5675e; --line: #383838; }
+    :root { --bg: #232323; --fg: #d6d6d6; --muted: #8a8a8a; --ok: #4cc38a; --bad: #e5675e; --busy: #e8a33d; --line: #383838; }
     * { box-sizing: border-box; }
     body { margin: 0; padding: 10px; background: var(--bg); color: var(--fg); font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     .row { display: flex; align-items: center; gap: 8px; }
     .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
-    .dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); }
+    .dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); } .dot.busy { background: var(--busy); }
     h1 { font-size: 13px; margin: 0; font-weight: 600; }
     #status { color: var(--muted); margin: 6px 0 10px; line-height: 1.4; }
     button { background: #3a3a3a; color: var(--fg); border: 1px solid #4a4a4a; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; }
@@ -17,11 +17,19 @@
     #log { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 6px; font: 11px Menlo, monospace; color: var(--muted); max-height: calc(100vh - 120px); overflow-y: auto; }
     #log div { padding: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #log .err { color: var(--bad); }
+    #activity { display: none; margin: 0 0 10px; padding: 6px 8px; border: 1px solid #5a4520; border-radius: 4px; background: #2d2618; }
+    #activity .editing { color: var(--busy); font-weight: 600; margin: 2px 0; }
+    #activity .job { margin: 4px 0; }
+    #activity .joblabel { display: inline-block; max-width: calc(100% - 70px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+    #activity .job button { float: right; padding: 1px 6px; }
+    #activity .bar { clear: both; height: 3px; background: #3a3a3a; border-radius: 2px; margin-top: 4px; }
+    #activity .bar div { height: 3px; background: var(--busy); border-radius: 2px; }
   </style>
 </head>
 <body>
   <div class="row"><span id="dot" class="dot"></span><h1>Claude Bridge</h1></div>
   <div id="status">Starting…</div>
+  <div id="activity"></div>
   <div class="row">
     <button id="restart">Restart</button>
     <button id="reload">Reload scripts</button>

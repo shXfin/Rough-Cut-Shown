@@ -316,8 +316,8 @@
 
     fns.ppro_open_sequence = function (a) {
         var seq = getSequence(a.sequence_id);
-        var ok = project().openSequence(seq.sequenceID);
-        return { opened: ok !== false, sequence: seqSummary(seq) };
+        var opened = project().openSequence(seq.sequenceID);
+        return { opened: opened !== false, sequence: seqSummary(seq) };
     };
 
     fns.ppro_set_playhead = function (a) {
@@ -417,8 +417,8 @@
     };
 
     fns.ppro_open_project = function (a) {
-        var ok = app.openDocument(a.path, true, true, true);
-        return { opened: !!ok, path: a.path };
+        var opened = app.openDocument(a.path, true, true, true);
+        return { opened: !!opened, path: a.path };
     };
 
     B.hostLoaded = "PPRO";

@@ -29,6 +29,8 @@ It sets up three things:
 
 Then add the bridge to Claude Code with the command the script prints, restart Premiere, and open Window > Extensions > Claude Bridge and Take Finder.
 
+`./install.sh --bridge-only` upgrades only the bridge, and `./install.sh --rollback` puts back the previous install (every install is backed up first). What each bridge tool does, with examples, is in [bridge/README.md](bridge/README.md).
+
 ## Take Finder
 
 Works on any project, with nothing to set up per project.

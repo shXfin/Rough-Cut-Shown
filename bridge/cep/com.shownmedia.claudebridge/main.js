@@ -9,7 +9,7 @@
 (function () {
   "use strict";
 
-  var BRIDGE_VERSION = "1.0.0";
+  var BRIDGE_VERSION = "2.0.0";
   var PORTS = { PPRO: 47811, AEFT: 47812 };
   var MAX_BODY = 8 * 1024 * 1024;
 
@@ -30,7 +30,10 @@
   var extPath = decodeURI(cep.getSystemPath("extension")).replace(/^file:\/\//, "");
   var CORE_JSX = path.join(extPath, "host", "bridge.jsx");
   var HOST_JSX = path.join(extPath, "host", APP === "PPRO" ? "ppro.jsx" : "aeft.jsx");
-  var TOKEN_FILE = path.join(os.homedir(), ".claude-adobe-bridge", "token");
+  var BRIDGE_HOME = path.join(os.homedir(), ".claude-adobe-bridge");
+  var TOKEN_FILE = path.join(BRIDGE_HOME, "token");
+  var ACT_DIR = path.join(BRIDGE_HOME, "activity");
+  var JOB_DIR = path.join(BRIDGE_HOME, "jobs");
 
   var LOADER =
     'if (typeof __claudeBridge === "undefined" || !__claudeBridge.hostLoaded) {' +
@@ -41,10 +44,93 @@
   var doc = typeof document !== "undefined" ? document : null;
   function $(id) { return doc ? doc.getElementById(id) : null; }
 
+  var lastStatus = { state: "", text: "" };
   function setStatus(state, text) {
+    lastStatus = { state: state, text: text };
     var dot = $("dot"), st = $("status");
     if (dot) dot.className = "dot " + (state || "");
     if (st) st.textContent = text;
+  }
+
+  // ---------- "Claude is editing" + jobs (written by the MCP server, one file per Claude session) ----------
+  var proc = nodeRequire("process");
+  function alive(pid) {
+    try { proc.kill(pid, 0); return true; } catch (e) { return e.code !== "ESRCH"; }
+  }
+
+  function readActivity() {
+    var out = [];
+    var files = [];
+    try { files = fs.readdirSync(ACT_DIR); } catch (e) { return out; }
+    for (var i = 0; i < files.length; i++) {
+      if (!/\.json$/.test(files[i])) continue;
+      var full = path.join(ACT_DIR, files[i]);
+      try {
+        var d = JSON.parse(fs.readFileSync(full, "utf8"));
+        if (!d.pid || !alive(d.pid)) { try { fs.unlinkSync(full); } catch (e2) {} continue; }
+        out.push(d);
+      } catch (e3) {}
+    }
+    return out;
+  }
+
+  function renderActivity() {
+    var box = $("activity");
+    if (!box) return;
+    var acts = readActivity();
+    while (box.firstChild) box.removeChild(box.firstChild);
+    var busy = false;
+    for (var i = 0; i < acts.length; i++) {
+      var a = acts[i];
+      if (a.editing) {
+        busy = true;
+        var e = doc.createElement("div");
+        e.className = "editing";
+        e.textContent = "Claude is editing: " + a.editing.label;
+        box.appendChild(e);
+      }
+      var jobs = a.jobs || [];
+      for (var j = 0; j < jobs.length; j++) {
+        busy = true;
+        var job = jobs[j], p = job.progress || {};
+        var row = doc.createElement("div");
+        row.className = "job";
+        var label = doc.createElement("span");
+        label.className = "joblabel";
+        label.textContent = job.label + (p.total ? "  " + (p.done || 0) + "/" + p.total : "") + (p.message ? "  " + p.message : "");
+        var bar = doc.createElement("div");
+        bar.className = "bar";
+        var fill = doc.createElement("div");
+        fill.style.width = (p.total ? Math.round(100 * (p.done || 0) / p.total) : 5) + "%";
+        bar.appendChild(fill);
+        var cancel = doc.createElement("button");
+        cancel.textContent = "Cancel";
+        cancel.setAttribute("data-job", job.id);
+        cancel.addEventListener("click", function (ev) {
+          var id = ev.target.getAttribute("data-job");
+          try { fs.mkdirSync(JOB_DIR, { recursive: true }); fs.writeFileSync(path.join(JOB_DIR, id + ".cancel"), "cancel"); ev.target.textContent = "Cancelling…"; } catch (e4) { log("cancel failed: " + e4.message, true); }
+        });
+        row.appendChild(label);
+        row.appendChild(cancel);
+        row.appendChild(bar);
+        box.appendChild(row);
+      }
+    }
+    box.style.display = busy ? "block" : "none";
+    var dot = $("dot");
+    if (dot && lastStatus.state === "ok") dot.className = "dot " + (busy ? "busy" : "ok");
+  }
+
+  var actTimer = null;
+  function watchActivity() {
+    try { fs.mkdirSync(ACT_DIR, { recursive: true }); } catch (e) {}
+    try {
+      fs.watch(ACT_DIR, function () {
+        if (actTimer) return;
+        actTimer = setTimeout(function () { actTimer = null; renderActivity(); }, 150);
+      });
+    } catch (e2) { log("activity watch unavailable: " + e2.message, true); }
+    renderActivity();
   }
 
   function log(msg, isErr) {
@@ -135,7 +221,7 @@
     var url = req.url.split("?")[0];
 
     if (req.method === "GET" && url === "/ping") {
-      return send(res, 200, { ok: true, app: APP, appLabel: APP_LABEL, appVersion: env.appVersion, bridgeVersion: BRIDGE_VERSION });
+      return send(res, 200, { ok: true, app: APP, appLabel: APP_LABEL, appVersion: env.appVersion, bridgeVersion: BRIDGE_VERSION, features: ["activity", "isolated-eval"] });
     }
 
     if (req.method === "POST" && url === "/reload") {
@@ -184,7 +270,7 @@
       log(msg, true);
     });
     server.listen(PORT, "127.0.0.1", function () {
-      setStatus("ok", "Listening for Claude on 127.0.0.1:" + PORT + " · " + APP_LABEL + " " + env.appVersion + ". Keep this panel open (docked is fine).");
+      setStatus("ok", "Ready · " + APP_LABEL + " " + env.appVersion + " · bridge " + BRIDGE_VERSION + " · port " + PORT + ". Keep this panel open (docked is fine).");
       log("bridge " + BRIDGE_VERSION + " ready");
     });
     evalScript(LOADER + '"loaded " + __claudeBridge.hostLoaded', 15000).then(
@@ -209,4 +295,5 @@
   window.__claudeBridgePanel = { start: start, restart: restart, port: PORT, stop: function () { if (server) server.close(); } };
 
   start();
+  if (doc) watchActivity();
 })();

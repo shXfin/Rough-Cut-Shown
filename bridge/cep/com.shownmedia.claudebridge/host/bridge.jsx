@@ -2,8 +2,12 @@
  * Claude Bridge — shared ExtendScript core (loaded in Premiere Pro and After Effects).
  * ExtendScript is ES3: no let/const, arrow functions, JSON, Array#map/forEach/indexOf.
  */
+// User scripts run here, in their own scope, so a script that declares `var ok` (or any other name)
+// can't replace the bridge's own helpers.
+function __claudeBridgeEval(__claudeSrc) { return eval(__claudeSrc); }
+
 var __claudeBridge = (function () {
-    var api = { version: "1.0.0", fns: {}, hostLoaded: false };
+    var api = { version: "2.0.0", fns: {}, hostLoaded: false };
 
     var ESCAPES = { '"': '\\"', '\\': '\\\\', '\b': '\\b', '\f': '\\f', '\n': '\\n', '\r': '\\r', '\t': '\\t' };
 
@@ -63,25 +67,36 @@ var __claudeBridge = (function () {
         return out;
     }
 
-    function ok(result) { return stringify({ ok: true, result: result }); }
+    function okJSON(result) { return stringify({ ok: true, result: result }); }
 
-    function fail(e) {
+    function fail(e) { return stringify(failInfo(e)); }
+
+    function failInfo(e) {
         var msg;
         try { msg = (e && e.message) ? e.message : String(e); } catch (x) { msg = "Unknown error"; }
         var info = { ok: false, error: msg };
         try { if (e && e.line) { info.line = e.line; } } catch (y) {}
-        return stringify(info);
+        try {
+            var f = e && e.fileName ? e.fileName : "";
+            if (f && typeof f !== "string") { f = f.fsName || String(f); }
+            if (f) { info.file = String(f); }
+        } catch (z) {}
+        return info;
     }
 
     api.stringify = stringify;
+    api.execIsolated = true;
 
     // Run arbitrary ExtendScript source; the value of the last expression is returned.
     api.exec = function (src) {
         try {
-            var r = eval(src);
-            return ok(r);
+            var r = __claudeBridgeEval(src);
+            return okJSON(r);
         } catch (e) {
-            return fail(e);
+            var info = failInfo(e);
+            // An error in the script itself: its line number is the script's, not this file's.
+            try { if (e.source === src) { delete info.file; } } catch (x) {}
+            return stringify(info);
         }
     };
 
@@ -89,7 +104,7 @@ var __claudeBridge = (function () {
     api.call = function (name, args) {
         try {
             if (!api.fns.hasOwnProperty(name)) { throw new Error("Unknown bridge function: " + name); }
-            return ok(api.fns[name](args || {}));
+            return okJSON(api.fns[name](args || {}));
         } catch (e) {
             return fail(e);
         }

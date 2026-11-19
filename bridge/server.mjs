@@ -36547,7 +36547,8 @@ import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { execFile } from "node:child_process";
-var VERSION = "1.0.0";
+var VERSION = "2.0.0";
+var HANDLERS = /* @__PURE__ */ new Map();
 var HOSTS = {
   ppro: { port: Number(process.env.CLAUDE_BRIDGE_PPRO_PORT) || 47811, label: "Premiere Pro" },
   aeft: { port: Number(process.env.CLAUDE_BRIDGE_AEFT_PORT) || 47812, label: "After Effects" }
@@ -36598,7 +36599,21 @@ async function request(host, method, route, body, timeoutMs = 6e4) {
   if (!data.ok) throw new BridgeError(`${h.label}: ${data.error || "unknown error"}`);
   return data;
 }
-function parseRaw(host, raw) {
+function errorWhere(parsed, src) {
+  const line = Number(parsed.line) || 0;
+  if (!line) return "";
+  const file = parsed.file ? String(parsed.file) : "";
+  let code = "";
+  try {
+    if (file && fs.existsSync(file)) code = fs.readFileSync(file, "utf8").split(/\r?\n/)[line - 1] || "";
+    else if (!file && typeof src === "string") code = src.split(/\r?\n/)[line - 1] || "";
+  } catch {
+  }
+  const where = file ? `${path.basename(file)} line ${line}` : `line ${line}`;
+  return ` (${where})${code.trim() ? `
+  ${line} | ${code.trim().slice(0, 200)}` : ""}`;
+}
+function parseRaw(host, raw, src) {
   let parsed;
   try {
     parsed = JSON.parse(raw);
@@ -36606,7 +36621,7 @@ function parseRaw(host, raw) {
     return raw;
   }
   if (parsed && parsed.ok === false) {
-    throw new BridgeError(`${HOSTS[host].label} script error: ${parsed.error}${parsed.line ? ` (line ${parsed.line})` : ""}`);
+    throw new BridgeError(`${HOSTS[host].label} script error: ${parsed.error}${errorWhere(parsed, src)}`);
   }
   return parsed && "result" in parsed ? parsed.result : parsed;
 }
@@ -36616,7 +36631,7 @@ function jsLiteral(value) {
 async function runScript(host, script, { timeoutMs = 6e4, label = "script" } = {}) {
   const wrapped = `__claudeBridge.exec(${jsLiteral(script)})`;
   const data = await request(host, "POST", "/eval", { script: wrapped, timeoutMs, label }, timeoutMs);
-  return parseRaw(host, data.raw);
+  return parseRaw(host, data.raw, script);
 }
 async function callFn(host, fn, args = {}, { timeoutMs = 6e4 } = {}) {
   const script = `__claudeBridge.call(${jsLiteral(fn)}, ${jsLiteral(args)})`;
@@ -36736,7 +36751,10 @@ var layerRef = {
 var JSX_NOTES = "ExtendScript is ES3: use var and function(){} (no let/const/arrow functions, no JSON, no Array.map/forEach/indexOf). The value of the last expression is returned to you, so end with a plain object/array/string/number, e.g. `var s = app.project.activeSequence; ({name: s.name, tracks: s.videoTracks.numTracks})`. Host objects are returned only as their type name, so copy the fields you need into a plain object.";
 function buildServer() {
   const server = new McpServer({ name: "adobe-bridge", version: VERSION });
-  const tool = (name, description, inputSchema, handler) => server.registerTool(name, { description, inputSchema }, safe(handler));
+  const tool = (name, description, inputSchema, handler) => {
+    HANDLERS.set(name, safe(handler));
+    return server.registerTool(name, { description, inputSchema }, safe(handler));
+  };
   tool("adobe_status", "Check whether Premiere Pro and After Effects are connected, plus their versions and open projects. Call this first.", {}, async () => {
     const out = {};
     for (const host of Object.keys(HOSTS)) {
@@ -36749,6 +36767,14 @@ function buildServer() {
         }
       }
       out[HOSTS[host].label] = p;
+    }
+    out["Claude bridge"] = { server: VERSION, v2: V2 && !V2_ERROR ? "loaded" : V2_ERROR || "not loaded" };
+    if (V2 && V2.statusInfo) {
+      try {
+        Object.assign(out["Claude bridge"], await V2.statusInfo());
+      } catch (e) {
+        out["Claude bridge"].v2StatusError = e.message;
+      }
     }
     return text(out);
   });
@@ -37001,6 +37027,13 @@ function buildServer() {
     { path: external_exports.string() },
     async (a) => text(await callFn("aeft", "ae_open_project", { path: expandHome(a.path) }, { timeoutMs: 18e4 }))
   );
+  if (V2) {
+    try {
+      V2.register({ server, tool, z: external_exports, VERSION, HOME_DIR, FRAME_DIR, HOSTS, BridgeError, text, expandHome, request, runScript, callFn, ping, waitForFile, imageContent, findExportPresets });
+    } catch (e) {
+      V2_ERROR = `v2 tools failed to register: ${e.message}`;
+    }
+  }
   return server;
 }
 function hostArg(v) {
@@ -37033,6 +37066,28 @@ async function cli(argv2) {
     console.log(`Reloaded: ${d.raw}`);
     return;
   }
+  if (cmd === "version") {
+    console.log(`Claude Adobe Bridge ${VERSION} (v2 tools: ${V2 && !V2_ERROR ? "loaded" : V2_ERROR || "not loaded"})`);
+    return;
+  }
+  if (cmd === "tools" || cmd === "call") {
+    buildServer();
+    if (cmd === "tools") {
+      console.log([...HANDLERS.keys()].join("\n"));
+      return;
+    }
+    const handler = HANDLERS.get(rest[0]);
+    if (!handler) throw new Error(`Unknown tool "${rest[0]}". Run: adobe-bridge tools`);
+    let args = {};
+    if (rest[1] === "--file") args = JSON.parse(await fsp.readFile(expandHome(rest[2]), "utf8"));
+    else if (rest[1]) args = JSON.parse(rest.slice(1).join(" "));
+    const res = await handler(args);
+    const out = (res.content || []).map((c) => c.type === "text" ? c.text : `[${c.type}${c.mimeType ? " " + c.mimeType : ""}, ${Math.round((c.data || "").length * 0.75 / 1024)} KB]`).join("\n") + "\n";
+    // Wait until the output is written: exiting straight away cuts long output short when it goes to a pipe.
+    await new Promise((resolve) => process.stdout.write(out, resolve));
+    if (V2 && V2.waitForJobs) await V2.waitForJobs();
+    process.exit(res.isError ? 1 : 0);
+  }
   if (cmd === "presets") {
     console.log((await findExportPresets()).join("\n") || "No .epr presets found.");
     return;
@@ -37044,7 +37099,17 @@ Usage:
   adobe-bridge eval <ppro|ae> --file x.jsx
   adobe-bridge reload <ppro|ae>           Reload the panel's ExtendScript files
   adobe-bridge presets                    List Premiere export presets (.epr)
+  adobe-bridge version                    Print the server version and whether v2 tools loaded
+  adobe-bridge tools                      List every tool name
+  adobe-bridge call <tool> '<json args>'  Run one tool from the command line (or: call <tool> --file args.json)
   (no arguments)                          Start the MCP server for Claude`);
+}
+var V2 = null;
+var V2_ERROR = null;
+try {
+  V2 = await import(new URL("./v2/index.mjs", import.meta.url));
+} catch (e) {
+  V2_ERROR = `v2 tools not loaded: ${e.message}`;
 }
 var argv = process.argv.slice(2);
 if (argv.length) {

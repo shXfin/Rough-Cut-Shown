@@ -12,9 +12,27 @@ Every change to the rough-cut agent gets an entry here, newest first, in the sam
   - On-screen number overlays: match the talent's pose between angles with pose detection, one font fit and one render per shot, every variable-font axis set, handles for hand trimming, shot and overlay nested together.
   - Export checks: In/Out on the main cut, pitch and level checked on speed-changed dialogue (nested mono voice can drop about 3 dB).
   - Colour labels for the current timeline, the main scrub and generated sequences.
+- **Claude Adobe bridge v2** (`bridge/`). 26 new Premiere tools, each tested on a scratch project in Premiere Pro 27. Every v1 tool keeps its name, arguments and behaviour. Details and examples are in `bridge/README.md`.
+  - Full-quality frames and WAVs with exact first frames and the In/Out and proxy setting put back. Source frames at the camera's own size, with the clip's effects.
+  - Background jobs with progress, status and Cancel. The panel shows "Claude is editing" while it works.
+  - Edits: ripple delete, insert gap, move range, exact clip placement (no audio spill onto other tracks, no empty tracks left), speed changes that ripple, marker moves.
+  - Transitions go with their clips. When a script moves clips, Premiere leaves the transitions behind (the DOM move) or deletes them (the QE move), and an orphaned audio transition can silence its track. Every edit tool puts each transition back on its cut, removes the ones whose content was cut away, and lists what it did. `premiere_read_timeline` flags orphaned transitions and `premiere_transition` action `remove_orphans` removes them.
+  - Many cuts in one edit: `premiere_ripple_delete_ranges` removes a whole list of ranges (given as the timeline is now) with one snapshot, moving each clip once (three ranges: 0.8 s instead of 2.0 s).
+  - Audio fades that don't wreck the audio: `premiere_audio_fade` fades one clip, a list, or every audio edit in a range, with Volume keyframes from silence to the clip's own level or with Premiere's audio transitions. It handles the two Premiere traps that break fades written as one-off scripts: Volume values aren't percent (1 is +15 dB), and keyframe times are in source time (clip-relative times land outside the clip).
+  - Effects: set a parameter by a friendly name (knows the Uniform Scale, Directional Blur and Offset traps), copy effects with keyframes in the right order and report what couldn't be copied, add and remove transitions.
+  - Relink to a new file version without the Link Media popup; title cards as PNGs in any font.
+  - Captions from word-level transcripts (SRT plus caption track, speaker labels), word search, and a bleep pass on a copy of the sequence (it adds an audio track to the copy for the tones when none is free).
+  - Exact timecode everywhere (23.976 non-drop, drop-frame, sequences that start at 01:00:00:00).
+  - Safety: a layout check that refuses an edit if that part of the timeline changed, a snapshot before multi-step edits, and errors that give the file, line and code.
+- `install.sh`: backs up the installed bridge before every install (last 10 kept), `--rollback`, `--list-backups`, `--bridge-only`, and a self-check.
+- Bridge tests: unit tests, tests of the Premiere-side code against a stand-in for Premiere, a v1 compatibility check, an ExtendScript lint, and an end-to-end Premiere test that only runs on a scratch project.
 
 ### Changed
 - `CHANGES.md`: person and project names replaced with roles.
+
+### Fixed
+- `premiere_run_jsx`: a script that declared a variable called `ok` failed with "ok is not a function". Scripts now run in their own scope.
+- The bridge's `call` command no longer cuts off long output.
 
 ## 2026-11-18
 
