@@ -33,6 +33,8 @@ Every change to the rough-cut agent gets an entry here, newest first, in the sam
 ### Fixed
 - `premiere_run_jsx`: a script that declared a variable called `ok` failed with "ok is not a function". Scripts now run in their own scope.
 - The bridge's `call` command no longer cuts off long output.
+- Bridge: snapshots and every other sequence the bridge creates (bleep copies, temporary render sequences, `premiere_build_sequence`) are labelled Magenta. A copy kept the original's colour label, so a snapshot looked exactly like the working timeline.
+- Bridge, two projects open: the v2 tools now work in the project that holds the sequence (found by path among the open projects) instead of whichever project Premiere has in front. A new optional `project` argument (a .prproj path) picks the project when no sequence is named.
 
 ## 2026-11-18
 

@@ -59,7 +59,7 @@ function makeWorld(opts = {}) {
     };
     return p;
   }
-  function makeSeq(name) {
+  function makeSeq(name, label = 15, home = seqs) {
     const seq = {
       sequenceID: "seq-" + ++ids, name, timebase: String(FT), zeroPoint: "0", videoDisplayFormat: 110,
       _v: [], _a: [], _markers: [],
@@ -67,8 +67,9 @@ function makeWorld(opts = {}) {
       get videoTracks() { return coll(seq._v, "numTracks"); },
       get audioTracks() { return coll(seq._a, "numTracks"); },
       getSettings: () => ({ videoFrameRate: T(FT) }),
-      clone: () => { const c = makeSeq(name + " copy"); seqs.push(c); return true; },
-      projectItem: { moveBin() {} },
+      // a copy keeps the original's colour label, as in Premiere
+      clone: () => { const c = makeSeq(name + " copy", seq.projectItem._label, home); home.push(c); return true; },
+      projectItem: { _label: label, moveBin() {}, setColorLabel(n) { this._label = n; }, getColorLabel() { return this._label; } },
       markers: {
         getFirstMarker: () => seq._markers.slice().sort((a, b) => a._s - b._s)[0] || null,
         getNextMarker: (m) => { const l = seq._markers.slice().sort((a, b) => a._s - b._s); return l[l.indexOf(m) + 1] || null; }
@@ -132,14 +133,19 @@ function makeWorld(opts = {}) {
   }
   const seq = makeSeq("Test");
   seqs.push(seq);
-  const project = {
-    name: "mock", path: "/tmp/mock.prproj",
-    get sequences() { return coll(seqs, "numSequences"); },
-    get activeSequence() { return seq; },
+  const makeProject = (name, list, active) => ({
+    name: name + ".prproj", path: "/tmp/" + name + ".prproj",
+    get sequences() { return coll(list, "numSequences"); },
+    get activeSequence() { return active; },
     openSequence() {},
-    rootItem: { children: coll([]), createBin: (name) => ({ type: 2, name, children: coll([]) }) },
+    rootItem: { children: coll([]), createBin: (n) => ({ type: 2, name: n, children: coll([]) }) },
     getInsertionBin: () => null
-  };
+  });
+  const project = makeProject("mock", seqs, seq);
+  // opts.otherProject: a second open project that Premiere has in front (app.project), with its own sequence
+  const otherSeqs = [];
+  const other = opts.otherProject ? makeProject("other", otherSeqs, null) : null;
+  if (other) { const o = makeSeq("Front", 4, otherSeqs); otherSeqs.push(o); Object.defineProperty(other, "activeSequence", { get: () => o }); }
   // QE track: razor, and items whose move("[-]f<frames>") shifts that one clip (not its linked partners) and
   // keeps the list in time order. With qeMove false it lists no items, so the DOM fallback is used.
   const qeTrack = (t) => ({
@@ -178,15 +184,15 @@ function makeWorld(opts = {}) {
   };
   const ctx = {
     __claudeBridge: { stringify: (x) => JSON.stringify(x) },
-    app: { project, enableQE() {}, version: "mock" },
+    app: { project: other || project, projects: coll(other ? [other, project] : [project], "numProjects"), enableQE() {}, version: "mock" },
     qe: { project: { getActiveSequence: () => qeSeq, getAudioTransitionByName: (n) => ({ name: n }), getVideoTransitionByName: (n) => ({ name: n }) } },
     Time, $: { stack: "" }, File: function () { return { exists: true }; }
   };
   vm.createContext(ctx);
   vm.runInContext(SRC, ctx);
-  const call = (name, args) => JSON.parse(ctx.__claudeBridge.v2.call(name, args));
+  const call = (name, args, proj) => JSON.parse(ctx.__claudeBridge.v2.call(name, args, proj));
   const marker = (name, s) => { const m = { name, _s: s, _e: s, get start() { return T(m._s); }, set start(sec) { m._s = Math.round(sec * TPS); }, get end() { return T(m._e); }, set end(sec) { m._e = Math.round(sec * TPS); } }; seq._markers.push(m); return m; };
-  return { seq, track, clip, transition, call, problems, marker, seqs, allClips: () => allClips(seq) };
+  return { seq, track, clip, transition, call, problems, marker, seqs, otherSeqs, allClips: () => allClips(seq) };
 }
 
 // A camera take on V1+A1+A2 (linked), music on A3 with a gap, and markers.
@@ -395,4 +401,46 @@ test("audio fade: fades longer than the clip are shortened to fit", () => {
   const f = r.result.faded[0];
   assert.equal(f.fadeIn + f.fadeOut, F(240));
   assert.match(f.note, /shortened/);
+});
+
+test("snapshot: the copy is labelled Magenta, the original keeps its colour", () => {
+  const { w } = cutWorld();
+  const r = w.call("v2_snapshot", { sequence_id: w.seq.sequenceID, label: "test" });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  const copy = w.seqs.find((s) => s.sequenceID === r.result.id);
+  assert.equal(copy.projectItem._label, 11);
+  assert.equal(w.seq.projectItem._label, 15);
+  assert.equal(r.result.project, "mock.prproj");
+  assert.equal(r.result.labelWarning, undefined);
+  // edit tools' own snapshots too
+  const e = w.call("v2_ripple_delete_many", { sequence_id: w.seq.sequenceID, ranges: [{ start: F(10), end: F(20) }] });
+  assert.equal(e.ok, true, JSON.stringify(e));
+  assert.equal(w.seqs.find((s) => s.sequenceID === e.result.snapshot.id).projectItem._label, 11);
+});
+
+test("two projects open: a sequence is found and copied in its own project, not the one in front", () => {
+  const { w } = cutWorld({ otherProject: true });
+  const r = w.call("v2_snapshot", { sequence_id: w.seq.sequenceID, label: "test" });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.equal(r.result.project, "mock.prproj");
+  assert.ok(w.seqs.some((s) => s.sequenceID === r.result.id));
+  assert.equal(w.otherSeqs.length, 1, "nothing added to the project in front");
+  // by name too, when only that project has it
+  const n = w.call("v2_seq_info", { sequence_id: "Test" });
+  assert.equal(n.ok, true, JSON.stringify(n));
+  assert.equal(n.result.project, "mock.prproj");
+  // without sequence_id: the front project's active sequence...
+  const f = w.call("v2_seq_info", {});
+  assert.equal(f.result.name, "Front");
+  // ...unless the project is named by path (or name)
+  const p = w.call("v2_seq_info", {}, "/tmp/mock.prproj");
+  assert.equal(p.result.name, "Test");
+  assert.equal(w.call("v2_seq_info", {}, "mock").result.name, "Test");
+  // a sequence of another project isn't looked for when the project is named
+  const x = w.call("v2_seq_info", { sequence_id: w.otherSeqs[0].sequenceID }, "/tmp/mock.prproj");
+  assert.equal(x.ok, false);
+  assert.match(x.error, /not found in mock\.prproj/);
+  const bad = w.call("v2_seq_info", {}, "/tmp/nope.prproj");
+  assert.equal(bad.ok, false);
+  assert.match(bad.error, /isn't open in Premiere.*\/tmp\/other\.prproj, \/tmp\/mock\.prproj/);
 });

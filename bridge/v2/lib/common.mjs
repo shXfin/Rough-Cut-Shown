@@ -16,7 +16,11 @@ export function schemas(z) {
     })
     .describe('Which clip: { track: "V1", at: "00:00:12:00" } or { node_id }');
   const Common = {
-    sequence_id: z.string().optional().describe("Sequence id or name; defaults to the active sequence")
+    sequence_id: z.string().optional().describe("Sequence id or name; defaults to the active sequence"),
+    project: z
+      .string()
+      .optional()
+      .describe("Path of the .prproj to work in (adobe_status lists the open ones). Only needed when two projects are open: by default the tools use the project that holds sequence_id, else the one Premiere has in front")
   };
   const Safety = {
     expect_layout: z
@@ -119,7 +123,8 @@ export async function expectFor(seqInfo, clock, token, needs) {
 }
 
 export function snapshotNote(r) {
-  return r && r.snapshot ? `A copy from before the edit is in the "Claude snapshots" bin: "${r.snapshot.name}".` : null;
+  if (!r || !r.snapshot) return null;
+  return `A copy from before the edit is in the "Claude snapshots" bin: "${r.snapshot.name}".` + (r.snapshot.labelWarning ? ` ${r.snapshot.labelWarning}` : "");
 }
 
 /** A length (not a position): seconds, "12f", or a timecode duration ("00:00:00:12"); whole frames. */

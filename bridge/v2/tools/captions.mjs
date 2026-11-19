@@ -66,7 +66,7 @@ export function register(def, ctx) {
       if (!mapped.words.length) throw new Error(`No words landed in "${info.name}". Clips skipped: ${JSON.stringify(mapped.skipped.slice(0, 10))}`);
       const cues = buildCues(mapped.words, a);
       const srt = toSrt(cues);
-      const proj = (await P.call("v2_info", {})).projectPath;
+      const proj = (await P.call("v2_info", { sequence_id: info.id })).projectPath;
       const dir = await outputFolder("captions", proj, a.output_dir ? ctx.expandHome(a.output_dir) : null);
       let file = path.join(dir, `${safeName(info.name)}_captions.srt`);
       if (await exists(file)) file = await nextVersionPath(file);
@@ -132,7 +132,7 @@ export function register(def, ctx) {
         if (job) job.progress(0, 4, "copying the sequence");
         const copy = await P.call("v2_clone", { sequence_id: info.id, name: a.new_name || `${info.name} (bleeped)` });
         // tone file (deterministic name; reused, never rewritten)
-        const proj = (await P.call("v2_info", {})).projectPath;
+        const proj = (await P.call("v2_info", { sequence_id: copy.id })).projectPath;
         const dir = await outputFolder("bleeps", proj, a.output_dir ? ctx.expandHome(a.output_dir) : null);
         const hz = a.tone_hz || 1000;
         const db = a.tone_db ?? -14;

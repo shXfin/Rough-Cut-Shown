@@ -356,6 +356,7 @@
 
         var seq = project().createNewSequenceFromClips(a.name, [sources[0]], bin || project().getInsertionBin());
         if (!seq) { throw new Error("Premiere did not create the sequence."); }
+        try { seq.projectItem.setColorLabel(11); } catch (eL) {} // Magenta: marks a sequence Claude made
         clearSequence(seq);
 
         var cursor = 0;

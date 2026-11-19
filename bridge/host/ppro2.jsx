@@ -13,7 +13,7 @@ function __claudeBridgeEval2(__claudeSrc) { return eval(__claudeSrc); }
 (function (B) {
     if (!B) { throw new Error("Claude Bridge core (bridge.jsx) is not loaded."); }
 
-    var V = { version: "2.0.0", build: null, fns: {}, keyBase: null, moveForm: null };
+    var V = { version: "2.0.0", build: null, fns: {}, keyBase: null, moveForm: null, proj: null };
     var F = V.fns;
     var TPS = 254016000000;
     var MEDIA_ALL = 4;
@@ -73,11 +73,20 @@ function __claudeBridgeEval2(__claudeSrc) { return eval(__claudeSrc); }
         return info;
     }
 
-    V.call = function (name, args) {
+    // proj: the `project` argument (a .prproj path or name). Without it, the project that holds args.sequence_id.
+    V.call = function (name, args, proj) {
         journal = [];
+        V.proj = null;
         try {
             if (!F.hasOwnProperty(name)) { fail("Unknown v2 helper: " + name + ". The server and ppro2.jsx don't match: restart Claude Code."); }
-            var r = F[name](args || {});
+            args = args || {};
+            if (proj) {
+                V.proj = projectByPath(proj);
+                if (!V.proj) { fail("That project isn't open in Premiere: " + proj + " (open: " + projectNames() + ")."); }
+            } else if (has(args, "sequence_id") && args.sequence_id !== "") {
+                pinOwner(args.sequence_id);
+            }
+            var r = F[name](args);
             return B.stringify({ ok: true, result: r });
         } catch (e) {
             return B.stringify(errInfo(e));
@@ -87,6 +96,7 @@ function __claudeBridgeEval2(__claudeSrc) { return eval(__claudeSrc); }
     // Run a user script (a job step). The value of the last expression is returned.
     V.exec = function (src) {
         journal = [];
+        V.proj = null;
         try {
             var r = __claudeBridgeEval2(src);
             return B.stringify({ ok: true, result: r });
@@ -107,46 +117,106 @@ function __claudeBridgeEval2(__claudeSrc) { return eval(__claudeSrc); }
     }
 
     // ------------------------------------------------------------------ project, bins, items
+    // With two projects open, app.project is whichever one Premiere has in front, which may not be the one being
+    // edited. So each call works in one project, found by path in app.projects: the one the caller named
+    // (the `project` argument), else the one that holds sequence_id, else app.project.
+    function openProjects() {
+        var out = [], front = app.project, frontPath = null;
+        if (front) { out.push(front); try { frontPath = normPath(front.path); } catch (e) {} }
+        try {
+            for (var i = 0; i < app.projects.numProjects; i++) {
+                var p = app.projects[i];
+                if (!front || normPath(p.path) !== frontPath) { out.push(p); }
+            }
+        } catch (e2) {}
+        return out;
+    }
+
+    function projectNames() {
+        var ps = openProjects(), out = [];
+        for (var i = 0; i < ps.length; i++) { out.push(ps[i].path || ps[i].name); }
+        return out.join(", ") || "none";
+    }
+
+    // A project by path (or by name, with or without .prproj), from app.projects.
+    function projectByPath(want) {
+        var ps = openProjects(), w = normPath(want), i;
+        for (i = 0; i < ps.length; i++) { if (normPath(ps[i].path) === w) { return ps[i]; } }
+        var hits = [];
+        for (i = 0; i < ps.length; i++) {
+            var n = lower(ps[i].name);
+            if (n === lower(want) || n === lower(want) + ".prproj") { hits.push(ps[i]); }
+        }
+        if (hits.length === 1) { return hits[0]; }
+        if (hits.length > 1) { fail("More than one open project is called '" + want + "'. Pass its full path instead (open: " + projectNames() + ")."); }
+        return null;
+    }
+
+    function sameProject(a, b) {
+        try { return normPath(a.path) === normPath(b.path); } catch (e) { return false; }
+    }
+
     function project() {
+        if (V.proj) { return V.proj; }
         if (!app.project) { fail("No Premiere Pro project is open."); }
         return app.project;
     }
 
-    function getSeq(id) {
-        var p = project();
-        if (id === undefined || id === null || id === "") {
-            if (!p.activeSequence) { fail("No active sequence. Open one in the Timeline or pass sequence_id."); }
-            return p.activeSequence;
-        }
-        for (var i = 0; i < p.sequences.numSequences; i++) {
-            var s = p.sequences[i];
-            if (String(s.sequenceID) === String(id)) { return s; }
-        }
-        var hits = [];
-        for (var j = 0; j < p.sequences.numSequences; j++) {
-            if (p.sequences[j].name === id) { hits.push(p.sequences[j]); }
-        }
-        if (hits.length === 1) { return hits[0]; }
-        if (hits.length > 1) { fail(hits.length + " sequences are called '" + id + "'. Pass the sequence id instead (premiere_get_project lists them)."); }
-        fail("Sequence not found: " + id);
-    }
-
-    function seqById(id) {
-        var p = project();
+    function seqIn(p, id) {
         for (var i = 0; i < p.sequences.numSequences; i++) {
             if (String(p.sequences[i].sequenceID) === String(id)) { return p.sequences[i]; }
         }
         return null;
     }
 
+    function seqsNamed(p, name) {
+        var hits = [];
+        for (var i = 0; i < p.sequences.numSequences; i++) { if (p.sequences[i].name === name) { hits.push(p.sequences[i]); } }
+        return hits;
+    }
+
+    // Work in the project that holds this sequence (by id, else by a name only one project has). Called before
+    // each helper runs, so imports, bins and copies all land in the sequence's own project.
+    function pinOwner(id) {
+        var ps = openProjects(), i, hit = null;
+        for (i = 0; i < ps.length && !hit; i++) { if (seqIn(ps[i], id)) { hit = ps[i]; } }
+        if (!hit && ps.length && !seqsNamed(ps[0], id).length) {
+            var owners = [];
+            for (i = 1; i < ps.length; i++) { if (seqsNamed(ps[i], id).length) { owners.push(ps[i]); } }
+            if (owners.length === 1) { hit = owners[0]; }
+        }
+        if (hit && !sameProject(hit, ps[0])) { V.proj = hit; }
+    }
+
+    function getSeq(id) {
+        var p = project();
+        if (id === undefined || id === null || id === "") {
+            if (!p.activeSequence) { fail("No active sequence in " + p.name + ". Open one in the Timeline or pass sequence_id."); }
+            return p.activeSequence;
+        }
+        var s = seqIn(p, id);
+        if (s) { return s; }
+        var hits = seqsNamed(p, id);
+        if (hits.length === 1) { return hits[0]; }
+        if (hits.length > 1) { fail(hits.length + " sequences are called '" + id + "'. Pass the sequence id instead (premiere_get_project lists them)."); }
+        fail("Sequence not found in " + p.name + ": " + id + (openProjects().length > 1 ? " (open projects: " + projectNames() + ")" : ""));
+    }
+
+    function seqById(id) {
+        return seqIn(project(), id);
+    }
+
+    // Every sequence id in every open project, so a copy is found whichever project Premiere put it in.
     function seqIds() {
-        var p = project(), ids = {};
-        for (var i = 0; i < p.sequences.numSequences; i++) { ids[String(p.sequences[i].sequenceID)] = true; }
+        var ps = openProjects(), ids = {};
+        for (var k = 0; k < ps.length; k++) {
+            for (var i = 0; i < ps[k].sequences.numSequences; i++) { ids[String(ps[k].sequences[i].sequenceID)] = true; }
+        }
         return ids;
     }
 
-    function getBin(name, create) {
-        var root = project().rootItem;
+    function getBin(name, create, proj) {
+        var root = (proj || project()).rootItem;
         for (var i = 0; i < root.children.numItems; i++) {
             var c = root.children[i];
             if (c.type === 2 && c.name === name) { return c; }
@@ -154,7 +224,18 @@ function __claudeBridgeEval2(__claudeSrc) { return eval(__claudeSrc); }
         if (!create) { return null; }
         var bin = root.createBin(name);
         if (bin) { return bin; }
-        return getBin(name, false);
+        return getBin(name, false, proj);
+    }
+
+    // Sequences Claude makes get this colour label (Magenta), so a copy never looks like the editor's own timeline.
+    var LABEL_CLAUDE = 11;
+    function labelClaude(seq) {
+        try {
+            var pi = seq.projectItem;
+            pi.setColorLabel(LABEL_CLAUDE);
+            try { if (pi.getColorLabel() !== LABEL_CLAUDE) { return false; } } catch (e2) {}
+            return true;
+        } catch (e) { return false; }
     }
 
     function walkItems(item, fn) {
@@ -327,10 +408,12 @@ function __claudeBridgeEval2(__claudeSrc) { return eval(__claudeSrc); }
         if (q) {
             var same = false;
             try { same = String(q.guid) === String(seq.sequenceID); } catch (e) {}
-            if (!same) { try { same = q.name === seq.name && project().activeSequence && String(project().activeSequence.sequenceID) === String(seq.sequenceID); } catch (e2) {} }
+            // QE only sees the project in front, so the name check counts only when that is the project being edited
+            // (with two projects open, the front one may have a sequence of the same name).
+            if (!same && (!V.proj || sameProject(V.proj, app.project))) { try { same = q.name === seq.name && project().activeSequence && String(project().activeSequence.sequenceID) === String(seq.sequenceID); } catch (e2) {} }
             if (same) { return q; }
         }
-        fail("This edit needs '" + seq.name + "' to be the active sequence in the Timeline. Open it (premiere_open_sequence) and try again.");
+        fail("This edit needs '" + seq.name + "' to be the active sequence in the Timeline" + (V.proj && !sameProject(V.proj, app.project) ? ", in " + V.proj.name + " brought to the front" : "") + ". Open it (premiere_open_sequence) and try again.");
     }
 
     function qeTC(seq, ticks) {
@@ -716,21 +799,27 @@ function __claudeBridgeEval2(__claudeSrc) { return eval(__claudeSrc); }
     }
 
     // ------------------------------------------------------------------ snapshots / clones
+    // A copy of seq, renamed, in binName, labelled Magenta. The copy inherits the original's colour label, so
+    // without relabelling it looks just like the editor's working timeline.
     function cloneSeq(seq, newName, binName) {
         var before = seqIds();
-        var active = project().activeSequence ? String(project().activeSequence.sequenceID) : null;
+        var p = project();
+        var active = p.activeSequence ? String(p.activeSequence.sequenceID) : null;
         if (!seq.clone()) { fail("Premiere wouldn't copy '" + seq.name + "'."); }
-        var p = project(), copy = null;
-        for (var i = 0; i < p.sequences.numSequences; i++) {
-            if (!before[String(p.sequences[i].sequenceID)]) { copy = p.sequences[i]; }
+        var ps = openProjects(), copy = null, home = p;
+        for (var k = 0; k < ps.length; k++) {
+            for (var i = 0; i < ps[k].sequences.numSequences; i++) {
+                if (!before[String(ps[k].sequences[i].sequenceID)]) { copy = ps[k].sequences[i]; home = ps[k]; }
+            }
         }
-        if (!copy) { fail("Premiere said it copied '" + seq.name + "' but the copy isn't in the project."); }
+        if (!copy) { fail("Premiere said it copied '" + seq.name + "' but the copy isn't in any open project."); }
         copy.name = newName;
-        if (binName) { try { copy.projectItem.moveBin(getBin(binName, true)); } catch (e) {} }
-        if (active && project().activeSequence && String(project().activeSequence.sequenceID) !== active) {
-            try { project().openSequence(active); } catch (e2) {}
+        var labelled = labelClaude(copy);
+        if (binName) { try { copy.projectItem.moveBin(getBin(binName, true, home)); } catch (e) {} }
+        if (active && p.activeSequence && String(p.activeSequence.sequenceID) !== active) {
+            try { p.openSequence(active); } catch (e2) {}
         }
-        return copy;
+        return { seq: copy, project: home, labelled: labelled };
     }
 
     function hhmmss() {
@@ -739,10 +828,16 @@ function __claudeBridgeEval2(__claudeSrc) { return eval(__claudeSrc); }
         return p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
     }
 
+    function copyInfo(c) {
+        var r = { id: String(c.seq.sequenceID), name: c.seq.name, project: c.project.name, projectPath: c.project.path };
+        if (!c.labelled) { r.labelWarning = "Couldn't set the Magenta label on the copy: it may share the original's colour."; }
+        return r;
+    }
+
     function snapshot(seq, what) {
-        var copy = cloneSeq(seq, seq.name + " - before " + what + " " + hhmmss(), BIN_SNAP);
-        did("saved a copy of the sequence: \"" + copy.name + "\"");
-        return { id: String(copy.sequenceID), name: copy.name };
+        var c = cloneSeq(seq, seq.name + " - before " + what + " " + hhmmss(), BIN_SNAP);
+        did("saved a copy of the sequence: \"" + c.seq.name + "\"");
+        return copyInfo(c);
     }
 
     // The caller read the timeline earlier; refuse if that part changed since (checked in the same call as the edit).
@@ -806,16 +901,19 @@ function __claudeBridgeEval2(__claudeSrc) { return eval(__claudeSrc); }
         try { var st = seq.getSettings(); info.audioSampleRate = tk(st.audioSampleRate); info.maxRenderQuality = st.maximumRenderQuality; info.maxBitDepth = st.maximumBitDepth; } catch (e6) {}
         info.videoTracks = seq.videoTracks.numTracks;
         info.audioTracks = seq.audioTracks.numTracks;
+        try { info.project = project().name; info.projectPath = project().path; } catch (e7) {}
+        try { info.label = seq.projectItem.getColorLabel(); } catch (e8) {}
         return info;
     }
 
     F.v2_info = function (a) {
+        var seq = (a && a.sequence_id) ? getSeq(a.sequence_id) : null;
         var p = project();
         var info = { app: app.version, project: p.name, projectPath: p.path, proxiesEnabled: null, openProjects: [] };
         try { info.proxiesEnabled = !!app.getEnableProxies(); } catch (e) {}
         try { for (var i = 0; i < app.projects.numProjects; i++) { info.openProjects.push({ name: app.projects[i].name, path: app.projects[i].path }); } } catch (e2) {}
         try { info.activeSequence = p.activeSequence ? seqInfo(p.activeSequence) : null; } catch (e3) {}
-        if (a && a.sequence_id) { info.sequence = seqInfo(getSeq(a.sequence_id)); }
+        if (seq) { info.sequence = seqInfo(seq); }
         return info;
     };
 
@@ -987,6 +1085,7 @@ function __claudeBridgeEval2(__claudeSrc) { return eval(__claudeSrc); }
             try { if (marks.inT !== null) { pi.setInPoint(tstr(marks.inT), MEDIA_ALL); } if (marks.outT !== null) { pi.setOutPoint(tstr(marks.outT), MEDIA_ALL); } } catch (e3) {}
         }
         if (!tmp) { fail("Premiere didn't create the temp sequence."); }
+        labelClaude(tmp);
         did("made temp sequence \"" + tmp.name + "\"");
         var tclip = null;
         if (f.kind === "video" && tmp.videoTracks.numTracks && tmp.videoTracks[0].clips.numItems) { tclip = { clip: tmp.videoTracks[0].clips[0], kind: "video", ti: 0 }; }
@@ -1006,6 +1105,7 @@ function __claudeBridgeEval2(__claudeSrc) { return eval(__claudeSrc); }
     };
 
     F.v2_source_cleanup = function (a) {
+        if (!V.proj) { pinOwner(a.temp_id); }
         var tmp = seqById(a.temp_id), removed = false;
         if (tmp) { removed = !!project().deleteSequence(tmp); }
         var bin = getBin(BIN_TEMP, false);
@@ -1022,8 +1122,7 @@ function __claudeBridgeEval2(__claudeSrc) { return eval(__claudeSrc); }
 
     F.v2_clone = function (a) {
         var seq = getSeq(a.sequence_id);
-        var copy = cloneSeq(seq, a.name || (seq.name + " copy"), a.bin || null);
-        return { id: String(copy.sequenceID), name: copy.name };
+        return copyInfo(cloneSeq(seq, a.name || (seq.name + " copy"), a.bin || null));
     };
 
     // Add one empty audio track at the end of a sequence (opens it: QE works on the active sequence only).

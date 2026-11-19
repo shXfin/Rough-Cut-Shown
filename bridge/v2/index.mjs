@@ -22,7 +22,8 @@ function wrap(ctx, handler) {
   return async (args) => {
     let r;
     try {
-      r = await handler(args ?? {});
+      const a = args ?? {};
+      r = await P.inProject(a.project, () => handler(a));
     } catch (e) {
       // Expected failures (Premiere refused, bad input, timeline changed) come back as plain messages.
       // Real bugs (TypeError and friends) keep their stack so they can be fixed.

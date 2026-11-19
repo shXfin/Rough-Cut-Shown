@@ -104,7 +104,7 @@ export function register(def, ctx) {
       const H = a.height || info.height;
       const font = await findFont(a.font);
       const size = a.size || Math.round(H * 0.06);
-      const proj = (await P.call("v2_info", {})).projectPath;
+      const proj = (await P.call("v2_info", { sequence_id: info.id })).projectPath;
       const dir = await outputFolder("titles", proj, a.output_dir ? ctx.expandHome(a.output_dir) : null);
       let file = path.join(dir, `${safeName(a.text.split("\n")[0], 40)}.png`);
       if (await exists(file)) file = await nextVersionPath(file);

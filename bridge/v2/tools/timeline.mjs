@@ -66,11 +66,11 @@ export function register(def, { z, S }) {
 
   def(
     "premiere_snapshot",
-    'Save a copy of a sequence in the "Claude snapshots" bin (named "<sequence> - before <label> <time>"). Edit tools do this on their own before multi-step edits; use this before a hand-written script.',
+    'Save a copy of a sequence in the "Claude snapshots" bin (named "<sequence> - before <label> <time>", colour label Magenta so it never looks like the working timeline). Edit tools do this on their own before multi-step edits; use this before a hand-written script.',
     { ...S.Common, label: z.string().optional().describe('What you are about to do, e.g. "tighten act 2"') },
     async (a) => {
       const r = await P.call("v2_snapshot", { sequence_id: a.sequence_id || null, label: a.label || "Claude edit" });
-      return { saved: r.name, id: r.id, bin: "Claude snapshots" };
+      return { saved: r.name, id: r.id, bin: "Claude snapshots", project: r.project, label: r.labelWarning || "Magenta" };
     }
   );
 }

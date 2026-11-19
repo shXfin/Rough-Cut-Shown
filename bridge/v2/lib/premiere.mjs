@@ -1,5 +1,6 @@
 // Talking to Premiere for the v2 tools. The v2 ExtendScript helpers (host/ppro2.jsx) are loaded into
 // Premiere on first use and reloaded when the file changes, so they work with the v1 panel too.
+import { AsyncLocalStorage } from "node:async_hooks";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -12,6 +13,13 @@ let built = { mtime: 0, hash: null };
 export function init(c) {
   ctx = c;
 }
+
+// The `project` argument of the tool call being handled, passed on to every Premiere call (and job step) it makes.
+const callCtx = new AsyncLocalStorage();
+export function inProject(project, fn) {
+  return callCtx.run({ project: project || null }, fn);
+}
+const currentProject = () => callCtx.getStore()?.project ?? null;
 
 const lit = (v) => JSON.stringify(v ?? null).replace(/[\u2028\u2029]/g, (c) => (c === "\u2028" ? "\\u2028" : "\\u2029"));
 
@@ -60,7 +68,7 @@ export async function call(fn, args = {}, { timeoutMs = 60000, label } = {}) {
     `(function(){var B=__claudeBridge;` +
     `try{if(!B.v2||B.v2.build!==${lit(hash)}){$.evalFile(new File(${lit(JSX_PATH)}));B.v2.build=${lit(hash)};}}` +
     `catch(e){return B.stringify({ok:false,error:"Couldn't load the v2 helpers into Premiere: "+e.message,line:e.line,file:${lit(JSX_PATH)}});}` +
-    `return B.v2.call(${lit(fn)},${lit(args)});})()`;
+    `return B.v2.call(${lit(fn)},${lit(args)},${lit(currentProject())});})()`;
   const data = await ctx.request("ppro", "POST", "/eval", { script, timeoutMs, label: label || fn.replace(/^v2_/, "") }, timeoutMs);
   let r;
   try {

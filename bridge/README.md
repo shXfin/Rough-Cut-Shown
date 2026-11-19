@@ -71,6 +71,8 @@ Every v2 tool accepts a time in any of these forms:
 
 - **Layout check.** `premiere_read_timeline` returns a `layout_token`. Pass it as `expect_layout` to an edit. If anything in that part of the timeline changed since it was read (you trimmed a clip meanwhile), the edit is refused and nothing is changed.
 - **Snapshots.** Multi-step edits (ripple delete, insert, move, speed, insert-placement) first save a copy of the sequence in the **Claude snapshots** bin, named like `Main edit - before ripple delete 14:02:11`. Pass `snapshot: false` to skip it.
+- **Claude's sequences are Magenta.** A copy in Premiere keeps the original's colour label, so a snapshot would look exactly like the timeline you're working on. Every sequence the bridge makes (snapshots, bleep copies, temporary render sequences, `premiere_build_sequence`) gets colour label 11, Magenta.
+- **Two projects open.** `app.project` is whichever project Premiere has in front, which may not be the one you're editing. The v2 tools work in the project that holds `sequence_id`, found by path among the open projects. Without a `sequence_id` they use the project in front, unless you pass `project` (the .prproj path; `adobe_status` lists the open ones).
 - **No automatic undo.** On Premiere 27 some script changes never reach the undo stack (a clip's enabled state), and one `undo()` can step back two actions. Undoing automatically could therefore revert your own last edit, so the bridge never does it. Edits check everything they can before changing anything. If one still fails partway, the error lists what was already done and names the snapshot.
 - **Errors say where.** A script error gives the file, the line number and the line of code, plus what had already happened.
 - **Claude is editing.** While Claude edits or runs a job, the panel shows "Claude is editing: …" with a progress bar and a **Cancel** button.
@@ -84,7 +86,7 @@ The v1 tools work as before:
 
 `premiere_run_jsx` now runs each script in its own scope (a script may use any variable name) and reports errors with the line.
 
-The v2 tools are below. Every example is only an example: the paths, names and times are made up. `sequence_id` is optional everywhere and defaults to the active sequence. A **clip** is `{ "track": "V1", "at": 12.5 }` (the clip under that time), `{ "track": "A2", "index": 0 }` or `{ "node_id": "000f4245" }`.
+The v2 tools are below. Every example is only an example: the paths, names and times are made up. `sequence_id` is optional everywhere and defaults to the active sequence. So is `project`, the .prproj path to work in when two projects are open (see Safety). A **clip** is `{ "track": "V1", "at": 12.5 }` (the clip under that time), `{ "track": "A2", "index": 0 }` or `{ "node_id": "000f4245" }`.
 
 ### Reading
 
@@ -104,9 +106,13 @@ Reads every track, clip, transition and marker of a sequence (or one range of it
 ```
 
 #### premiere_snapshot
-Saves a copy of a sequence in **Claude snapshots** before you run a hand-written script.
+Saves a copy of a sequence in **Claude snapshots** before you run a hand-written script. The copy is labelled Magenta.
 ```json
 { "label": "tighten act 2" }
+```
+With two projects open (example path):
+```json
+{ "label": "tighten act 2", "project": "/Volumes/Work/Example/Example.prproj" }
 ```
 
 ### Frames and audio

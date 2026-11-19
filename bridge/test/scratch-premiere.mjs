@@ -61,6 +61,11 @@ function jsx(code) {
   }
 }
 
+/** A sequence's colour label (0-15), or null. */
+function labelOf(seqId) {
+  return jsx(`(function(){var p=app.project;for(var i=0;i<p.sequences.numSequences;i++){var s=p.sequences[i];if(String(s.sequenceID)===${JSON.stringify(String(seqId))})return s.projectItem.getColorLabel();}return null;})()`);
+}
+
 function guard() {
   const p = jsx("app.project ? app.project.path : ''");
   if (path.resolve(String(p)) !== path.resolve(PROJ)) {
@@ -156,6 +161,7 @@ S.v1 = () => {
   });
   ok(!r.error && r.data.placed.length === 3, "premiere_build_sequence T1 (3 bars clips)", r.error || r.data);
   state.T1 = r.data && r.data.sequence ? r.data.sequence.id : null;
+  if (state.T1) ok(String(labelOf(state.T1)) === "11", "premiere_build_sequence labels its sequence Magenta (needs the reinstalled panel)", labelOf(state.T1));
   save();
   r = tool("premiere_get_project", {});
   ok(!r.error && r.data.sequences.some((s) => s.name === "T1"), "premiere_get_project lists T1", r.error);
@@ -794,8 +800,15 @@ S.jobs2 = async () => {
   console.log("\n== snapshot, job status and cancel (one MCP server, as Claude Code runs it)");
   const m = await mcpSession();
   try {
+    jsx(`(function(){var p=app.project;for(var i=0;i<p.sequences.numSequences;i++){if(String(p.sequences[i].sequenceID)===${JSON.stringify(String(state.T1))})p.sequences[i].projectItem.setColorLabel(15);}return 1;})()`);
     let r = await m.call("premiere_snapshot", { sequence_id: state.T1, label: "scratch test" });
     ok(!r.error && /scratch test/.test(r.data.saved), "premiere_snapshot saves a copy", r.error || r.data);
+    if (!r.error) {
+      // the original is Yellow (15) here; the copy inherits that unless the bridge relabels it Magenta (11)
+      const orig = String(labelOf(state.T1)), copy = String(labelOf(r.data.id));
+      ok(copy === "11" && orig === "15", `snapshot labelled Magenta, original kept Yellow (copy ${copy}, original ${orig})`);
+      ok(r.data.project && r.data.label === "Magenta", "snapshot names its project and label", r.data);
+    }
     r = await m.call("premiere_job_start", { steps: [1, 2, 3, 4, 5, 6].map((n) => ({ label: `step ${n}`, script: String(n) })), pause_ms: 1500 });
     ok(!r.error && r.data.job && r.data.job.id, "slow job started", r.error || r.data);
     if (r.error) return;
