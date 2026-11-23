@@ -2,6 +2,11 @@
 
 Every change to the rough-cut agent gets an entry here, newest first, in the same commit as the change.
 
+## 2026-11-24
+
+### Added
+- Rule: rebuild labels from the sound under them after the editor's hand pass; name alternates in plain words; mark takes that run into the next line.
+
 ## 2026-11-23
 
 ### Added (late)

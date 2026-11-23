@@ -417,6 +417,16 @@ Vision
 - Put the repaired copy (with 1 s handles) on the next audio track, mute the original clip under it and link both
   into the take, so Match Frame and the Take Finder still reach the original recording.
 
+## Relabel after the editor's pass (2026-11-24)
+- When the editor has finished re-ordering, trimming and swapping takes by hand, rebuild the label track from the
+  SOUND under each label (recorder file + source time -> take), never from the old label names: one label per take
+  (back-to-back pieces of one take share a label), numbered in the editor's final order.
+- Name every alternate on its label in plain words (e.g. "ALT 3: Hawaii trip for teams", "Google Ventures",
+  "older wording"), so a reviewer knows which version they are watching without the script open.
+- When a take deliberately runs on into the next line, say so on the label ("runs into Line 13"), including short
+  pieces that were never stored as takes. A line in both hooks says "also in Hook 1/2" in each place.
+- Only replace the label track: compare every other track before and after, and snapshot first.
+
 ## When to cut to cam B (2026-11-09, measured + researched)
 - Measured: one editor rough cut (3:54) uses cam B ZERO times; every shot is A (the hook's VFX shot is A cam plus
   VFX). Another launched cut: 2 B shots in the whole video. So: A is the default,
