@@ -4,6 +4,9 @@ Every change to the rough-cut agent gets an entry here, newest first, in the sam
 
 ## 2026-11-23
 
+### Added (late)
+- Rule: a read right after a crew read with no action call is a rehearsal; label it and keep it out of best-N, but only flag (not drop) pickups in scenes shot line by line.
+
 ### Changed
 - `render_preview.py`, `fetch_proxies.sh`: H.264 now on Apple's hardware encoder (VideoToolbox, `-allow_sw 1`), about 2.5x faster on an M1 Air; bitrates set so files stay small.
 - `make_twins.py`: `prores_videotoolbox` gets `-allow_sw 1`, so it runs on base M1 chips (no ProRes engine) instead of failing with -12908.

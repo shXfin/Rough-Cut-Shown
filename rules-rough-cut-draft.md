@@ -395,6 +395,13 @@ Vision
 - Camera clocks are often never set (one shoot: A cam said 2020, B cam 2022). Date the shoot from the recorder's
   BWF date, and date the script from the doc's edits and comments, not from the cameras.
 
+## Rehearsals are not takes (2026-11-23)
+- A read right after a crew member says the line aloud, with no "action" call in between, is a repeat-after-me
+  rehearsal (one shoot: the actor asked "say that one more time", then read it off a tablet). Label it REHEARSAL in
+  the scrub (red, "skip") and keep it out of every best-N selection; the real take follows a fresh "action".
+- Don't drop every read after a crew read: when a scene is shot line by line with the cameras rolling, the
+  director's read is followed by a real pickup. Flag those for the editor's eye instead of removing them.
+
 ## When to cut to cam B (2026-11-09, measured + researched)
 - Measured: one editor rough cut (3:54) uses cam B ZERO times; every shot is A (the hook's VFX shot is A cam plus
   VFX). Another launched cut: 2 B shots in the whole video. So: A is the default,
