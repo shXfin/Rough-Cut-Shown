@@ -341,6 +341,26 @@ Vision
   proxy gets black bars inside. Render Individual clips, ProRes 422 Proxy, Source name, 4 audio channels, no
   directory levels. Premiere accepts them with attachProxy; export still uses the RAW.
 
+## ffmpeg speed: Apple's hardware encoder, VideoToolbox (2026-11-23)
+- Every H.264/H.265 file ffmpeg makes (review previews, upload copies for Melius/Gemini, check renders) encodes with
+  VideoToolbox: `-c:v h264_videotoolbox -b:v 12M` (or `hevc_videotoolbox`). Set a bitrate: VideoToolbox ignores
+  `-crf`. Decode H.264/HEVC camera files with `-hwaccel videotoolbox` placed before `-i`.
+- Measured on an 8 GB M1 Air, 10 s of 4K camera to 1080p H.264: Sony XAVC HS (HEVC 4:2:2 10-bit) 8.9 s software vs
+  3.2 s VideoToolbox (2.8x faster); Sony XAVC-I (H.264 4:2:2 intra) 6.4 s vs 5.1 s (that decode stays on the CPU, so
+  the gain is small). Expect the biggest win on HEVC/H.264 long-GOP sources.
+- ProRes: a base M1 has no ProRes engine and `prores_videotoolbox` fails (error -12908). Use `prores_ks` there, or
+  Resolve / Media Encoder. `prores_videotoolbox` only on M1 Pro/Max and later chips.
+- Long renders: split the timeline into pieces with exact frame counts, encode each piece, join them with the concat
+  demuxer and `-c copy` (no re-encode), build the audio once and mux it without re-encoding. Short separate pieces
+  (cards, inserts) beat layers over the whole film. On an 8 GB Mac encode pieces one or two at a time, never all at
+  once: there is one hardware encoder, so more parallel pieces only add memory (six parallel 4K encodes once froze
+  the Mac and crashed Premiere).
+- Look at one frame of every hardware-encoded file before using it. One Mac's Resolve H.264 proxies came out with
+  green/pink blocks; ffmpeg's VideoToolbox output from Sony XAVC-I and XAVC HS was clean. Proxies stay ProRes 422
+  Proxy, never H.264/H.265.
+- Deliverables (animation hand-off, client finals) still follow the render SOP presets. VideoToolbox is for speed on
+  previews and uploads, not for final quality.
+
 ## When to cut to cam B (2026-11-09, measured + researched)
 - Measured: one editor rough cut (3:54) uses cam B ZERO times; every shot is A (the hook's VFX shot is A cam plus
   VFX). Another launched cut: 2 B shots in the whole video. So: A is the default,
