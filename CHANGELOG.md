@@ -5,6 +5,8 @@ Every change to the rough-cut agent gets an entry here, newest first, in the sam
 ## 2026-11-23
 
 ### Added
+- `tools/link_takes.py`: links each take's A cam, B cam and recorder clips in a `build_scrub.py` XML (FCP XML `<link>`), so Match Frame and edge drags reach the full source files.
+- Rules: build the scrub on original files (not cleaned per-take copies) so Take Finder and Match Frame keep working; one camera clip per recorder file when lines repeat across files; date shoots from the recorder, not camera clocks.
 - Rule: ffmpeg uses Apple's hardware encoder (VideoToolbox) for H.264/H.265 previews and upload copies, with measured
   speed-ups on an 8 GB M1 (2.8x on HEVC camera files), the ProRes limit on base M1 chips, the split-encode-join
   pattern for long renders (one or two pieces at a time on 8 GB), and a frame check on every hardware-encoded file.

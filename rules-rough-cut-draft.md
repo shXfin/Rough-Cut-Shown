@@ -378,6 +378,20 @@ Vision
   credits per 15 min part) and gets cut off. Ask for labels only (line number + speaker + type) or label locally.
 - Upload only audio (MP3 of the recorder Mix channel) or proxies, never camera originals.
 
+## Scrub sources: every clip leads back to its full file (2026-11-23)
+- Build the scrub on the ORIGINAL files: camera originals (proxies attached afterwards) and the recorder WAVs, not
+  cleaned per-take copies. A cleaned copy is a separate short file: Match Frame on it never reaches the full
+  recording, dragging its edge only reveals its 2 s handle, and every rebuild writes new file names.
+- Link each take's clips (A cam, B cam, recorder sound) with `tools/link_takes.py` after `build_scrub.py`, so
+  selecting one selects the take and Match Frame on the sound opens the whole recorder file.
+- Take Finder matches a clip in the cut to the scrub by media file + source time. Scrub and cut must point at the
+  same files; cuts made from rebuilt cleaned copies (new names each build) are what made it fail on a new project.
+  Clean the sound in the rough cut (or with Essential Sound) after the takes are picked.
+- One camera clip belongs to one recorder file. When the same line was shot in several files, the word sync can
+  confirm a clip against two of them; keep only the match with the most words (the others are repeat-text matches).
+- Camera clocks are often never set (one shoot: A cam said 2020, B cam 2022). Date the shoot from the recorder's
+  BWF date, and date the script from the doc's edits and comments, not from the cameras.
+
 ## When to cut to cam B (2026-11-09, measured + researched)
 - Measured: one editor rough cut (3:54) uses cam B ZERO times; every shot is A (the hook's VFX shot is A cam plus
   VFX). Another launched cut: 2 B shots in the whole video. So: A is the default,
