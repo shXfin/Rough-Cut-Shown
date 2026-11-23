@@ -591,6 +591,27 @@ Every shot in a review scrub (full scrub or Best 3) carries a burned-in label on
 ## Project hygiene (2026-11-19)
 - **Colour-label sequences:** the timeline in current use one colour (yellow), the main scrub another (blue), every sequence the agent creates a third (magenta), and move backups into a Backups bin. Move the "current" colour when work moves to a new timeline.
 
+## Script check against the source of truth (2026-11-24)
+- A shared script link opens one tab of a multi-tab doc. Before labelling, find out which tab the ticket names as the source of truth, list every tab, and compare its text with the version the crew shot (they can differ: one shoot used a newer tab than the one the ticket named).
+- Flag, never guess: lines that match, lines shot with different wording or by a different speaker, lines shot but not in the script, and script lines never shot. The flags go in the ticket note, not on the picture.
+- Before saying a line was never filmed, search every recorder file and every camera clip's own audio, word for word and loosely (about half the words matching). Crew talk can hold a lone matching word.
+
+## Log footage: convert it, then match every file by measurement (2026-11-24)
+- Read each clip's colour space first (`projectItem.getColorSpace()`). For log footage (example: S-Log3 / S-Gamut3.Cine), turn on the project's log colour management (`app.project.setLogColorManagement(true)`) plus the sequence's auto tone mapping and gamut compression (`seq.getSettings()` / `seq.setSettings()`), instead of hand curves or a LUT.
+- Match per source FILE, not per camera body: daylight drifts across a shoot day. Render one frame per file with the labels off, measure highlights (98th percentile), blacks (2nd percentile) and the white balance of a neutral surface (R minus B, and G), then set Lumetri Exposure, Blacks, Temperature and Tint per file. A second measured pass closes what the first one missed. Example targets that worked: highlights 0.82, blacks 0.025.
+- Dark clothing: lower the blacks until it reads deep black, then check a crop that its texture is still there.
+
+## Dialogue cleanup on a scrub (2026-11-24)
+- Clean per recorder file into new copies that keep the length, channel count and timecode (BWF `time_reference`, copied with ffmpeg `-map_metadata 1 -write_bext 1`), so a relink stays in sync. Never overwrite a file Premiere has open: write v02, v03 and relink with `changeMediaPath(newPath, true)`. Keep the originals linked in the full scrub.
+- Set the compressor threshold from the speech level, not a fixed number: a fixed low threshold lifted the noise floor between words (median clean-to-noise went from 25 to 34 dB after fixing it). Follow with a gentle downward expander for pauses, then level each clip to the target and limit.
+- Room echo on one speaker: compare the lav channel with the recorder mix. The lav is usually drier; switch to it, then a light de-reverb (suppress late reverb by at most about 7 dB).
+- Boxy "inside a car" tone with rumble: high-pass and extra low-band denoise, then match-EQ the take to the SAME speaker's cleanest take (one-octave smoothing, capped at about ±6 dB and only gently lifting above 5 kHz). Measure the tone difference before and after.
+- A take reused in two places carries its noise to both: fix the noise in the source file, then check every place the take is used (one horn showed up in both hooks).
+- Clip Volume that refuses a new value is time-varying: `setTimeVarying(false)` first, then `setValue`.
+
+## Export: proxies (2026-11-24)
+- Export reads the originals unless "Use Proxies" is ticked in the export settings. The proxy toggle under the monitor only changes playback.
+
 ## How to write these rules (hard rule)
 - Every rule must make sense on any project. Write the general principle; a project's specifics (a character's name, "the phone", one camera's numbers) can only appear as a labelled example.
 - No client, project or person names: the repo is public.
