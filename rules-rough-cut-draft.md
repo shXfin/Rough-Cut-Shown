@@ -361,6 +361,23 @@ Vision
 - Deliverables (animation hand-off, client finals) still follow the render SOP presets. VideoToolbox is for speed on
   previews and uploads, not for final quality.
 
+## Transcripts: local Whisper vs Melius (2026-11-23, measured on a 45 min recorder day)
+- **Whisper drops whole repeated takes.** With no VAD and no prompt, faster-whisper kept take 1 of a line and wrote
+  nothing for take 2 (same loudness), and skipped most crew talk: 3,803 words vs 5,252 from ElevenLabs Scribe on the
+  same audio. After every local run, scan each recorder file for stretches louder than the room (0.1 s RMS) that no
+  word covers (2 s or longer), re-transcribe each stretch on its own, and merge. Delete gap-fill words that are only
+  "Thank you" / "You": Whisper invents those over noise.
+- **Best word accuracy: ElevenLabs Scribe v2 on Melius**, about 5 credits a minute (45 min = 229 credits, 20 s per
+  16 min part). It keeps false starts, crew slates and notes, and asides. On Melius it returns plain text only: no word
+  times, no speaker labels. Timings still come from the local words (align Scribe text to them).
+- **Gemini on Melius is a poor transcriber for long audio.** Text models take image/video, not audio, so audio goes as
+  a black video with the file name and time burned in. 16 min cost 464 credits and the answer stopped after about
+  1 minute; times were whole seconds. Use Gemini for short judgement calls (snippets), not full transcripts.
+- **Melius text nodes cap the answer (about 2,600 words) and time out after about 5 min.** Never ask a text model
+  to repeat a whole transcript with labels: it costs about as much as the transcript is long (Sonnet 5: about 215
+  credits per 15 min part) and gets cut off. Ask for labels only (line number + speaker + type) or label locally.
+- Upload only audio (MP3 of the recorder Mix channel) or proxies, never camera originals.
+
 ## When to cut to cam B (2026-11-09, measured + researched)
 - Measured: one editor rough cut (3:54) uses cam B ZERO times; every shot is A (the hook's VFX shot is A cam plus
   VFX). Another launched cut: 2 B shots in the whole video. So: A is the default,

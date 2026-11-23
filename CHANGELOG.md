@@ -8,6 +8,9 @@ Every change to the rough-cut agent gets an entry here, newest first, in the sam
 - Rule: ffmpeg uses Apple's hardware encoder (VideoToolbox) for H.264/H.265 previews and upload copies, with measured
   speed-ups on an 8 GB M1 (2.8x on HEVC camera files), the ProRes limit on base M1 chips, the split-encode-join
   pattern for long renders (one or two pieces at a time on 8 GB), and a frame check on every hardware-encoded file.
+- Rules: local Whisper drops repeated takes and crew talk (gap scan + re-transcribe), Scribe v2 on Melius is the most
+  accurate transcript (text only, no timings), Gemini is not for long transcripts, Melius text answers cap and time
+  out, so label without repeating the transcript. Measured costs included.
 
 ## 2026-11-19
 
