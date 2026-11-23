@@ -407,6 +407,16 @@ Vision
 - Don't drop every read after a crew read: when a scene is shot line by line with the cameras rolling, the
   director's read is followed by a real pickup. Flag those for the editor's eye instead of removing them.
 
+## Street noise under a line: find it, then repair only that slice (2026-11-23)
+- A noise from outside (car horn, siren) reaches every mic about equally, so "louder on the boom than on the lav"
+  does NOT find it. Look for steady, unevenly spaced tones that are not multiples of the speaker's pitch (a horn:
+  two tones around 400-500 Hz plus overtones; a male voice: even harmonics of ~100-150 Hz).
+- Repair only the honk's own time window (one shoot: 0.2 s under the first syllable): notch the horn's partials and,
+  frame by frame, pull any non-voice tone down to its surroundings, with 15 ms fades in and out. Measure before and
+  after (that pass took the horn down 21 dB with nothing changed outside the window).
+- Put the repaired copy (with 1 s handles) on the next audio track, mute the original clip under it and link both
+  into the take, so Match Frame and the Take Finder still reach the original recording.
+
 ## When to cut to cam B (2026-11-09, measured + researched)
 - Measured: one editor rough cut (3:54) uses cam B ZERO times; every shot is A (the hook's VFX shot is A cam plus
   VFX). Another launched cut: 2 B shots in the whole video. So: A is the default,
