@@ -4,6 +4,10 @@ Every change to the rough-cut agent gets an entry here, newest first, in the sam
 
 ## 2026-11-23
 
+### Changed
+- `render_preview.py`, `fetch_proxies.sh`: H.264 now on Apple's hardware encoder (VideoToolbox, `-allow_sw 1`), about 2.5x faster on an M1 Air; bitrates set so files stay small.
+- `make_twins.py`: `prores_videotoolbox` gets `-allow_sw 1`, so it runs on base M1 chips (no ProRes engine) instead of failing with -12908.
+
 ### Added
 - `tools/link_takes.py`: links each take's A cam, B cam and recorder clips in a `build_scrub.py` XML (FCP XML `<link>`), so Match Frame and edge drags reach the full source files.
 - Rules: build the scrub on original files (not cleaned per-take copies) so Take Finder and Match Frame keep working; one camera clip per recorder file when lines repeat across files; date shoots from the recorder, not camera clocks.

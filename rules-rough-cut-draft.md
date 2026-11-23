@@ -348,8 +348,11 @@ Vision
 - Measured on an 8 GB M1 Air, 10 s of 4K camera to 1080p H.264: Sony XAVC HS (HEVC 4:2:2 10-bit) 8.9 s software vs
   3.2 s VideoToolbox (2.8x faster); Sony XAVC-I (H.264 4:2:2 intra) 6.4 s vs 5.1 s (that decode stays on the CPU, so
   the gain is small). Expect the biggest win on HEVC/H.264 long-GOP sources.
-- ProRes: a base M1 has no ProRes engine and `prores_videotoolbox` fails (error -12908). Use `prores_ks` there, or
-  Resolve / Media Encoder. `prores_videotoolbox` only on M1 Pro/Max and later chips.
+- Always add `-allow_sw 1` to VideoToolbox encoders: where the chip has no encoder (a base M1 has no ProRes engine,
+  `prores_videotoolbox` fails with -12908) Apple's own software encoder takes over instead of the job failing. Measured
+  on a base M1: ProRes 422 via `prores_videotoolbox -allow_sw 1` 5.6 s vs `prores_ks` 12.2 s for 5 s of 4K.
+- The skill's encoders use it: `render_preview.py` and `fetch_proxies.sh` (H.264, ~2.5x faster than libx264, bitrate
+  set so file sizes stay close to before) and `make_twins.py` (ProRes).
 - Long renders: split the timeline into pieces with exact frame counts, encode each piece, join them with the concat
   demuxer and `-c copy` (no re-encode), build the audio once and mux it without re-encoding. Short separate pieces
   (cards, inserts) beat layers over the whole film. On an 8 GB Mac encode pieces one or two at a time, never all at

@@ -15,7 +15,7 @@ def probe(p):
     return v["width"], v["height"], n, tc, v.get("color_range", "tv"), any(s["codec_type"] == "audio" for s in o["streams"])
 def enc(args, out, w, h, rng):
     vf = f"scale={w}:{h}:in_range={'full' if rng == 'pc' else 'tv'}:out_range=tv,format=p210le"
-    subprocess.run([FF, "-v", "error", "-y"] + args + ["-vf", vf, "-c:v", "prores_videotoolbox", "-profile:v", "standard", "-vendor", "apl0",
+    subprocess.run([FF, "-v", "error", "-y"] + args + ["-vf", vf, "-c:v", "prores_videotoolbox", "-profile:v", "standard", "-allow_sw", "1", "-vendor", "apl0",   # allow_sw: base M1 has no ProRes engine (-12908)
                     "-color_range", "tv", "-c:a", "pcm_s16le", "-ar", "48000", "-ac", "2", out], check=True)
 items = list(R.items())
 if len(sys.argv) > 3: items.sort(key=lambda kv: -sum(b - a for a, b in kv[1])) if sys.argv[3] == "big" else items.reverse()

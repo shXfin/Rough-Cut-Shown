@@ -5,15 +5,18 @@ import json, os, subprocess, sys, tempfile
 SEG = json.load(open(sys.argv[1])); OUT = sys.argv[2]
 tmp = tempfile.mkdtemp(dir=os.path.dirname(os.path.abspath(OUT)))   # stays on the T7
 def run(*a): subprocess.run(["ffmpeg", "-v", "error", "-y", *a], check=True)
+# Apple's hardware H.264 encoder (VideoToolbox): ~2.5x faster than libx264 on an M1 Air. It ignores -crf, so a bitrate
+# is set; -allow_sw 1 falls back to Apple's software encoder on a Mac without the encoder (never a hard failure).
+VENC = ["-c:v", "h264_videotoolbox", "-b:v", "1500k", "-maxrate", "3M", "-bufsize", "6M", "-allow_sw", "1"]
 
 vparts = []
 for i, s in enumerate(SEG):
     f = os.path.join(tmp, f"v{i:03d}.mp4")
     label = s["label"].replace("·", "-").replace(":", "").replace("'", "")   # drawtext chokes on : and '
     draw = f"drawtext=text='{label}':x=24:y=24:fontsize=28:fontcolor=white:box=1:boxcolor=black@0.55:boxborderw=8"
-    vin = ["-ss", str(s["vin"]), "-t", str(s["dur"]), "-i", s["video"]] if s["video"] else \
+    vin = ["-hwaccel", "videotoolbox", "-ss", str(s["vin"]), "-t", str(s["dur"]), "-i", s["video"]] if s["video"] else \
           ["-f", "lavfi", "-t", str(s["dur"]), "-i", "color=c=black:s=1920x1080:r=24000/1001"]
-    run(*vin, "-an", "-vf", f"scale=1280:-2,{draw}", "-r", "24000/1001", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", f)
+    run(*vin, "-an", "-vf", f"scale=1280:-2,{draw}", "-r", "24000/1001", *VENC, f)
     vparts.append(f)
 
 # sound = the cleaned, already-faded pieces build_xml.py baked, laid end to end exactly as on the timeline
