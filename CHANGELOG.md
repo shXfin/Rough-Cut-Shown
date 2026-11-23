@@ -5,6 +5,7 @@ Every change to the rough-cut agent gets an entry here, newest first, in the sam
 ## 2026-11-23
 
 ### Added (late)
+- Rule: what counts as a flub vs a part (line-by-line pickups, swears inside a take, scripted trail-offs), and never merging restarts into one take.
 - Rule: a read right after a crew read with no action call is a rehearsal; label it and keep it out of best-N, but only flag (not drop) pickups in scenes shot line by line.
 
 ### Changed

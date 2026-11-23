@@ -399,6 +399,11 @@ Vision
 - A read right after a crew member says the line aloud, with no "action" call in between, is a repeat-after-me
   rehearsal (one shoot: the actor asked "say that one more time", then read it off a tablet). Label it REHEARSAL in
   the scrub (red, "skip") and keep it out of every best-N selection; the real take follows a fresh "action".
+- FLUB means the take broke: it stops mid-word, or the speaker swears, says sorry or restarts INSIDE it (check the
+  talent's own asides between the first and last word, not only the text). A single sentence said cleanly on its own
+  is a PART, not a flub, when the director is shooting the line sentence by sentence. A line that trails off in the
+  script ("...and we can...") is not broken when the take trails off the same way.
+- Never merge restarts into one long "full take": a take ends at a swear, a "sorry" or a crew line read.
 - Don't drop every read after a crew read: when a scene is shot line by line with the cameras rolling, the
   director's read is followed by a real pickup. Flag those for the editor's eye instead of removing them.
 
