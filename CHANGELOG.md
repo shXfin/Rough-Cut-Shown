@@ -2,6 +2,12 @@
 
 Every change to the rough-cut agent gets an entry here, newest first, in the same commit as the change.
 
+## 2026-11-25
+
+### Added
+- `tools/fetch_drive.sh`: download a shoot from a Google Drive folder (shared drives too) with rclone, showing percent, GB, speed and time left every 5 s. Checks free space first, resumes after Ctrl+C, verifies sizes at the end. Each editor uses their own rclone remote; no keys in the repo.
+- `tools/make_proxies.sh`: 540p proxies from local camera originals for shoots that are not on Aspect, same settings as `fetch_proxies.sh`, one file at a time with n of N progress.
+
 ## 2026-11-24
 
 ### Added

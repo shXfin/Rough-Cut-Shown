@@ -6,6 +6,8 @@ Tools that turn a Shown launch shoot (camera proxies, recorder audio, shooting s
 
 | Step | Script | What it does |
 |---|---|---|
+| Download (not on Aspect) | `tools/fetch_drive.sh` | Google Drive folder to a local drive with rclone, live percent, speed and time left; resumes after Ctrl+C; checks space first |
+| Proxies (not on Aspect) | `tools/make_proxies.sh` | 540p proxies from local camera originals, one file at a time, skips finished ones |
 | Transcribe | `tools/transcribe.py` | Word-level transcript of recorder WAVs and camera proxies (faster-whisper) |
 | Re-time words | `tools/align.py` | WhisperX forced alignment; word ends are ~80 ms later than Whisper says |
 | Sync | `tools/textsync.py` | Sync cameras to the recorder by matching spoken words (waveform sync can fail when cameras run long) |
