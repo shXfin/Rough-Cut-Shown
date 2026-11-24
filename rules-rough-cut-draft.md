@@ -426,6 +426,16 @@ Vision
 - When a take deliberately runs on into the next line, say so on the label ("runs into Line 13"), including short
   pieces that were never stored as takes. A line in both hooks says "also in Hook 1/2" in each place.
 - Only replace the label track: compare every other track before and after, and snapshot first.
+- Take numbering is a hard rule, re-checked after EVERY edit, by anyone: the badge "x/y" counts only the takes of that
+  exact line AND version (main or one alt) inside that section. A "1/2" must always have a "2/2" in the same section; a
+  line repeated in another section (e.g. a second hook) starts its own count. Before handing over, recount from the
+  sound and compare every label (line, take, x/y, start/end); zero mismatches or it doesn't ship.
+- Label words are for the reviewer, not for us: "HOOK 2 - LINE 3 - FOUNDER", "MAIN LINE", "ALT 1" numbered exactly as
+  the script numbers its alts, per section. Never internal tags (script tab names, version codes). Lines the script
+  drops or a client hasn't approved go in a clearly named section at the end, or are removed if the team says so.
+- Extras (a reviewer's highlight, a short note) go inside the same label box as a small tag or one short line.
+  Never stack extra boxes under the label or let anything touch the picture.
+- Order the scrub by the script the team names as the source of truth, with a short gap between sections.
 
 ## When to cut to cam B (2026-11-09, measured + researched)
 - Measured: one editor rough cut (3:54) uses cam B ZERO times; every shot is A (the hook's VFX shot is A cam plus

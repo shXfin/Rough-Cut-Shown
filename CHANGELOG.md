@@ -5,6 +5,7 @@ Every change to the rough-cut agent gets an entry here, newest first, in the sam
 ## 2026-11-24
 
 ### Added
+- Rules: take numbering (x/y per line and version per section, recounted from the sound after every edit), plain-word labels with script alt numbers, extras inside the label box, scrub ordered by the source-of-truth script.
 - Rules: script check against the source-of-truth tab (flag, never guess; search all audio before calling a line unshot).
 - Rules: log footage via Premiere's log colour management, then match every source file by measured highlights, blacks and white balance.
 - Rules: dialogue cleanup on a scrub (versioned copies that keep timecode, speech-relative compressor, lav vs mix for echo, match EQ to the same speaker's cleanest take, fix reused takes at the source, time-varying Volume trap).
