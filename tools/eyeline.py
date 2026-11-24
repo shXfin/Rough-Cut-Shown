@@ -10,7 +10,7 @@ from mediapipe.tasks import python as mpt
 from mediapipe.tasks.python import vision
 W = os.path.abspath(sys.argv[1]); FPS_S = 4; YAW_TOL, PITCH_TOL = 11.0, 11.0
 MAXP = int(os.environ.get("PEOPLE", "2"))   # the people on screen who speak to camera; extra faces (background, false hits) are dropped
-MODEL = "/Volumes/T7/work/models/face_landmarker.task"
+MODEL = os.environ.get("FACE_MODEL") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "models", "face_landmarker.task")   # bundled in the repo; FACE_MODEL overrides
 SRC = {os.path.basename(p): p for p in json.load(open(os.path.join(W, "sources.json")))}
 SYNC = {}
 for l in open(os.path.join(W, "sync_a_ok.jsonl")):

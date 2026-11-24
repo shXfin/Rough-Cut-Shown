@@ -9,7 +9,7 @@
 import json, os, sys, glob, subprocess
 import numpy as np, onnxruntime as ort
 MIX, DUMP = sys.argv[1], sys.argv[2]; REC = sys.argv[3] if len(sys.argv) > 3 else "/Volumes/Sandisk1TB/Concurrence/Audio"
-MODEL = "/Volumes/T7/work/tools/dnsmos/sig_bak_ovr.onnx"
+MODEL = os.environ.get("DNSMOS_MODEL", "/Volumes/T7/work/tools/dnsmos/sig_bak_ovr.onnx")   # set DNSMOS_MODEL on other machines
 sess = ort.InferenceSession(MODEL, providers=["CPUExecutionProvider"])
 P_SIG = np.poly1d([-0.08397278, 1.22083953, 0.0052439]); P_BAK = np.poly1d([-0.13166888, 1.60915514, -0.39604546])
 def load(path, ss, t, sr=16000, extra=""):

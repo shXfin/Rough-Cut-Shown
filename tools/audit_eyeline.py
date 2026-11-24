@@ -8,7 +8,7 @@ W, CL = os.path.abspath(sys.argv[1]), sys.argv[2]; REF = sys.argv[3] if len(sys.
 import mediapipe as mp
 from mediapipe.tasks import python as mpt
 from mediapipe.tasks.python import vision
-det = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(base_options=mpt.BaseOptions(model_asset_path="/Volumes/T7/work/models/face_landmarker.task"),
+det = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(base_options=mpt.BaseOptions(model_asset_path=(os.environ.get("FACE_MODEL") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "models", "face_landmarker.task"))),
       num_faces=4, min_face_detection_confidence=0.3, output_facial_transformation_matrixes=True))
 PX = {os.path.basename(p)[:-10]: p for p in glob.glob(os.path.join(W, "..", "proxies", "A_CAM", "*_proxy.mp4"))}
 TW = {os.path.basename(p)[:-len("_4K.mov")]: p for p in glob.glob(os.path.join(W, "..", "4K_local", "*_4K.mov"))}

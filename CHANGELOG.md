@@ -5,6 +5,11 @@ Every change to the rough-cut agent gets an entry here, newest first, in the sam
 ## 2026-11-25
 
 ### Added
+- `tools/check_setup.sh`: read-only setup check for a new machine (programs, Python packages, rclone remote, bridge, free space), printing the fix for anything missing.
+- `models/face_landmarker.task` (Google MediaPipe, Apache 2.0) ships in the repo so eyeline and Best 3 work on any Mac.
+
+### Changed
+- `eyeline.py`, `audit_eyeline.py`: face model path is the repo's `models/` folder (or `FACE_MODEL`), no longer a fixed path on one drive. `audio_ear.py`: `DNSMOS_MODEL` sets its model path.
 - `tools/fetch_drive.sh`: download a shoot from a Google Drive folder (shared drives too) with rclone, showing percent, GB, speed and time left every 5 s. Checks free space first, resumes after Ctrl+C, verifies sizes at the end. Each editor uses their own rclone remote; no keys in the repo.
 - `tools/make_proxies.sh`: 540p proxies from local camera originals for shoots that are not on Aspect, same settings as `fetch_proxies.sh`, one file at a time with n of N progress.
 

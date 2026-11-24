@@ -6,6 +6,7 @@ Tools that turn a Shown launch shoot (camera proxies, recorder audio, shooting s
 
 | Step | Script | What it does |
 |---|---|---|
+| Setup check | `tools/check_setup.sh` | Read-only check that a Mac has everything (programs, Python packages, rclone remote, bridge, free space), with the fix for anything missing |
 | Download (not on Aspect) | `tools/fetch_drive.sh` | Google Drive folder to a local drive with rclone, live percent, speed and time left; resumes after Ctrl+C; checks space first |
 | Proxies (not on Aspect) | `tools/make_proxies.sh` | 540p proxies from local camera originals, one file at a time, skips finished ones |
 | Transcribe | `tools/transcribe.py` | Word-level transcript of recorder WAVs and camera proxies (faster-whisper) |
