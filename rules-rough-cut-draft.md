@@ -79,6 +79,7 @@ Each rule says what went wrong and what to do instead.
 
 ## Before anything else on a new project
 
+- **Time first, then progress, on every step (2026-11-25).** Before starting any step, tell the editor in one line what it is and how long it will take (measured from the file sizes and this machine, for example "Proxies for A cam: 12 clips, 145 GB, about 70 min"). Anything over about 2 minutes also shows live progress the editor can watch: a percentage, "n of N" or time left in the terminal (`fetch_drive.sh` and `make_proxies.sh` already do this). If a step runs much longer than said, say so with a new estimate instead of going quiet. Finish each message with what is running and what is still to come.
 - **Check the proxies first:** that every camera clip has a proxy, that each proxy has sound (Aspect drops it on some clips), and that its length matches the original. Do this before transcribing, syncing or downloading anything big.
 - **One silent clip must never stop the batch:** skip it, list it, and place it by picture later.
 - **Missing footage is flagged, never a reason to stop (2026-11-25).** Before downloading or proxying, list every clip each camera recorded, from the camera's own index files that travel with the card (Sony `XDROOT/Clip/*M01.XML` sidecars and `MEDIAPRO.XML`, Canon/Blackmagic equivalents) and the recorder's sound report (CSV). Compare that against the media files actually there. Also compare against the script: a camera or angle the script asks for (for example a reactions camera) with no folder at all is missing too.

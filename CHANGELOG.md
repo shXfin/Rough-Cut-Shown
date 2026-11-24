@@ -5,6 +5,7 @@ Every change to the rough-cut agent gets an entry here, newest first, in the sam
 ## 2026-11-25
 
 ### Added
+- Rule: say what each step is and how long it will take before starting it; long steps show live progress (percent, n of N or time left); give a new estimate if one runs long.
 - Rule: missing footage is flagged, never a reason to stop. Check every camera's clip list (camera index files, sound report, script) against what arrived, tell the editor which clips are missing and what they cover, carry on with what's there, and re-list the whole source before each big step to pick up late uploads in place.
 - `tools/check_setup.sh`: read-only setup check for a new machine (programs, Python packages, rclone remote, bridge, free space), printing the fix for anything missing.
 - `models/face_landmarker.task` (Google MediaPipe, Apache 2.0) ships in the repo so eyeline and Best 3 work on any Mac.
