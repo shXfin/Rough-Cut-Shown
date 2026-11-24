@@ -81,6 +81,11 @@ Each rule says what went wrong and what to do instead.
 
 - **Check the proxies first:** that every camera clip has a proxy, that each proxy has sound (Aspect drops it on some clips), and that its length matches the original. Do this before transcribing, syncing or downloading anything big.
 - **One silent clip must never stop the batch:** skip it, list it, and place it by picture later.
+- **Missing footage is flagged, never a reason to stop (2026-11-25).** Before downloading or proxying, list every clip each camera recorded, from the camera's own index files that travel with the card (Sony `XDROOT/Clip/*M01.XML` sidecars and `MEDIAPRO.XML`, Canon/Blackmagic equivalents) and the recorder's sound report (CSV). Compare that against the media files actually there. Also compare against the script: a camera or angle the script asks for (for example a reactions camera) with no folder at all is missing too.
+  - Tell the editor running the agent straight away, in plain words: which camera, which clip numbers, how much is missing, and which script parts it probably covers (match clip times against the recorder files). Example: "B cam: 17 clips recorded, 5 on the drive, C006 to C017 missing; these sit under scene 2. No C cam folder, the script needs it for reactions."
+  - Then carry on with what is there. Build with the cameras that exist, mark every piece without its camera (`NO B CAM` markers), and keep a running list in `<project>/MISSING_FOOTAGE.txt`.
+  - Uploads are often still running. Before each big step (scrub, rough cut, conform) list the whole source folder again, not only the folder first downloaded: late clips can land in a different sub folder. Re-run the download (finished files are skipped), make proxies for the new clips only, sync them, and add them to the existing sequences in place. Tell the editor what arrived and what is still missing.
+  - The coverage check below still runs; when its gaps match clips already flagged as missing, it reports them and the run continues instead of stopping.
 
 ## Camera coverage is checked, never assumed (2026-11-04)
 - FIRST, right after sync and before takes, scrub or any edit: run `coverage.py work_dir`. It prints, per recorder
